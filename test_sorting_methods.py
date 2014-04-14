@@ -334,6 +334,67 @@ def quick_sort(list, partition_func = splitByLastElement, leaf_sort_func = None,
     quick_sort_part(list, 0, len(list) - 1, partition_func, leaf_sort_func, trace)
     return list
 
+
+### heap sort ###
+
+def parent(current):
+    return (current-1)/2
+
+def left(current):
+    return (current+1)*2-1
+
+def right(current):
+    return (current+1)*2
+
+def sift_down(list, subtree_root, length):
+    current = subtree_root
+    while True:
+        # print "current: {}, list[current]: {}".format(current, list[current])
+        # print "left:  {}, list[left]:  {}".format(left(current),  list[left(current)]  if left(current) < len(list) else "")  
+        # print "right: {}, list[right]: {}".format(right(current), list[right(current)] if right(current) < len(list) else "") 
+
+        maxIndex = current
+        if left(current)  < length and list[left(current)]  > list[maxIndex]:
+            maxIndex = left(current)
+
+        if right(current) < length and list[right(current)] > list[maxIndex]:
+            maxIndex = right(current)
+
+        if maxIndex != current:
+            # print "swap {} and {}".format(list[maxIndex], list[current])
+            swap(list, current, maxIndex)
+        else:
+            break;
+
+        current = maxIndex
+
+def heapify(list, length):
+    # print list
+    current = parent(length)
+
+    while current >= 0:    
+        sift_down(list, current, length)
+        current -= 1
+
+        # print list
+
+
+def heap_sort(list):
+    heapify(list, len(list))
+
+    sortedIndex = len(list) - 1
+
+    while sortedIndex >= 0:        
+        swap(list, 0, sortedIndex)
+        # print list[:sortedIndex], list[sortedIndex:]
+
+        sift_down(list, 0, sortedIndex)
+        # print ">>", list[:sortedIndex], list[sortedIndex:]
+
+        sortedIndex -= 1
+
+    return list
+
 def random_generator(size):
     counter = 0
     while counter < size:
@@ -398,21 +459,21 @@ class TestSortingMethods(unittest.TestCase):
 
         self.result = {}
 
-        # generators_list = [random_generator, almost_sorted_generator, reverse_sorted_generator, few_uniq_generator]
-        generators_list = [random_generator, reverse_sorted_generator]
+        generators_list = [random_generator, almost_sorted_generator, reverse_sorted_generator, few_uniq_generator]
+        # generators_list = [random_generator, reverse_sorted_generator]
         # sort_func_list = [bubble_sort, insertion_sort, insertion_sort2]
-        # sort_func_list = [bubble_sort, insertion_sort, insertion_sort2, selection_sort, shell_sort, merge_sort, quick_sort, lambda x: quick_sort(x, splitByMedian)]
-        sort_func_list = [quick_sort, \
-                          lambda x: quick_sort(x, partition_func=splitByMiddleElement), \
-                          lambda x: quick_sort(x, partition_func=splitByMedian), \
-                          lambda x: quick_sort(x, leaf_sort_func=leaf_insertion_sort)]
+        sort_func_list = [bubble_sort, insertion_sort, insertion_sort2, selection_sort, shell_sort, merge_sort, quick_sort, lambda x: quick_sort(x, splitByMedian), heap_sort]
+        # sort_func_list = [quick_sort, \
+        #                   lambda x: quick_sort(x, partition_func=splitByMiddleElement), \
+        #                   lambda x: quick_sort(x, partition_func=splitByMedian), \
+        #                   lambda x: quick_sort(x, leaf_sort_func=leaf_insertion_sort)]
 
         for generator in generators_list:
             print generator
             for sort_func in sort_func_list:
                 self.run_until(sort_func, 0.5, generator)
 
-        for generator in self.result:
+        for generator in generators_list:
             print generator
             for list_size in sorted(self.result[generator]):
                 sys.stdout.write(str(list_size) + "\t")
@@ -528,6 +589,22 @@ class TestSortingMethods(unittest.TestCase):
         self.assertEqual(quick_sort([6,8,4,9,5,3,1,2,7], leaf_sort_func=leaf_insertion_sort), [1,2,3,4,5,6,7,8,9])
         randomList = [random.random() for _ in xrange(10000)]
         self.assertEqual(quick_sort(randomList, leaf_sort_func=leaf_insertion_sort), sorted(randomList))
+
+    def test_heap_sort(self):
+        list = [1,2,3,4,5,6]
+        heapify(list, len(list))
+        self.assertEqual(sorted(list), [1,2,3,4,5,6])
+        for i in xrange(len(list)/2):
+            if (i+1)*2-1 < len(list):
+                self.assertTrue(list[i] > list[(i+1)*2-1])
+            if (i+1)*2 < len(list):
+                self.assertTrue(list[i] > list[(i+1)*2])
+
+        self.assertEqual(heap_sort([1,2,3,4,5,6]), [1,2,3,4,5,6])
+        self.assertEqual(heap_sort([1,2,3,4,5,6,9,8,7]), [1,2,3,4,5,6,7,8,9])
+        self.assertEqual(heap_sort([6,8,4,9,5,3,1,2,7]), [1,2,3,4,5,6,7,8,9])
+        randomList = [random.random() for _ in xrange(10000)]
+        self.assertEqual(heap_sort(randomList), sorted(randomList))
 
 if __name__ == '__main__':
     unittest.main()

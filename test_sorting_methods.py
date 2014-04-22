@@ -395,11 +395,89 @@ def heap_sort(list):
 
     return list
 
+
+### radix sort
+
+def count_sort(list):
+    max_value = max(list)
+
+    bucket = [0 for _ in xrange(max_value+1)]
+
+    for value in list:
+        bucket[value] += 1
+
+    # print "bucket:", bucket
+
+    for i in xrange(1, len(bucket)):
+        # if i == 0: continue
+        bucket[i] += bucket[i-1]
+
+    # print "cumulative bucket:", bucket
+
+    new_list = [0 for _ in xrange(len(list))]
+
+    for i in xrange(len(list)):
+        # print i, list[i], "->new_list", bucket[list[i]]
+        bucket[list[i]] -= 1
+        new_list[bucket[list[i]]] = list[i]
+
+    return new_list
+
+
+def radix_sort(list, base=10):
+
+    exp = 1
+
+    max_value = max(list)
+
+    if max_value < 1: return list
+
+    bucket = [0 for _ in xrange(base)]
+
+    while exp < max_value:
+
+        for i in xrange(base):
+            bucket[i] = 0
+
+        # split to bucket
+        for value in list:
+            digit = value//exp % base
+            # print value, digit
+            bucket[digit] += 1
+
+        # print "bucket:", bucket
+
+        # cumulative sum
+        for i in xrange(1, len(bucket)):
+            bucket[i] += bucket[i-1]
+
+        # print "cumulative bucket:", bucket
+
+        # reposition
+        new_list = [0 for _ in xrange(len(list))]
+
+        for i in xrange(len(list) - 1, -1, -1):
+            digit = list[i]//exp % base
+            bucket[digit] -= 1
+            new_list[bucket[digit]] = list[i]
+
+            # print "list[i]:", list[i], "digit: ", digit, "bucket[digit]: ", bucket[digit]
+
+        # print "list after iteration:", new_list
+
+        list = new_list
+
+        exp *= base
+
+    return list
+
+### generators
+
 def random_generator(size):
     counter = 0
     while counter < size:
         counter += 1
-        yield random.random()
+        yield int(random.random()*sys.maxint)
 
 def almost_sorted_generator(size, percent=10.0):
     counter = 0
@@ -455,18 +533,27 @@ class TestSortingMethods(unittest.TestCase):
 
     def test_run_benchmarks(self):
 
-        return
+        # return
 
         self.result = {}
 
-        generators_list = [random_generator, almost_sorted_generator, reverse_sorted_generator, few_uniq_generator]
+        # generators_list = [random_generator, almost_sorted_generator, reverse_sorted_generator, few_uniq_generator]
         # generators_list = [random_generator, reverse_sorted_generator]
+        generators_list = [few_uniq_generator]
         # sort_func_list = [bubble_sort, insertion_sort, insertion_sort2]
-        sort_func_list = [bubble_sort, insertion_sort, insertion_sort2, selection_sort, shell_sort, merge_sort, quick_sort, lambda x: quick_sort(x, splitByMedian), heap_sort]
+        sort_func_list = [bubble_sort, insertion_sort, insertion_sort2, selection_sort, shell_sort, \
+                          merge_sort, quick_sort, lambda x: quick_sort(x, splitByMedian), heap_sort, 
+                          lambda x: radix_sort(x, 1000)]
         # sort_func_list = [quick_sort, \
         #                   lambda x: quick_sort(x, partition_func=splitByMiddleElement), \
         #                   lambda x: quick_sort(x, partition_func=splitByMedian), \
         #                   lambda x: quick_sort(x, leaf_sort_func=leaf_insertion_sort)]
+        # sort_func_list = [radix_sort, \
+        #                   lambda x: radix_sort(x,     2), \
+        #                   lambda x: radix_sort(x,   100), 
+        #                   lambda x: radix_sort(x,  1000), 
+        #                   lambda x: radix_sort(x, 10000)
+        #                   ]
 
         for generator in generators_list:
             print generator
@@ -605,6 +692,20 @@ class TestSortingMethods(unittest.TestCase):
         self.assertEqual(heap_sort([6,8,4,9,5,3,1,2,7]), [1,2,3,4,5,6,7,8,9])
         randomList = [random.random() for _ in xrange(10000)]
         self.assertEqual(heap_sort(randomList), sorted(randomList))
+
+    def test_count_sort(self):
+        self.assertEqual(count_sort([1,2,3,4,5,6,9,8,7]), [1,2,3,4,5,6,7,8,9])
+        self.assertEqual(count_sort([16,8,4,19,5,23,1,2,7]), [1,2,4,5,7,8,16,19,23])
+        randomList = [int(random.random()*10000) for _ in xrange(10000)]
+        self.assertEqual(count_sort(randomList), sorted(randomList))
+
+    def test_radix_sort(self):
+        self.assertEqual(radix_sort([1,2,3,4,5,6,9,8,7]), [1,2,3,4,5,6,7,8,9])
+        self.assertEqual(radix_sort([16,8,4,19,5,23,1,2,7]), [1,2,4,5,7,8,16,19,23])
+        randomList = [int(random.random())*10000000 for _ in xrange(10000)]
+        self.assertEqual(radix_sort(randomList), sorted(randomList))
+        self.assertEqual(radix_sort(randomList, 2), sorted(randomList))
+        self.assertEqual(radix_sort(randomList, 100), sorted(randomList))
 
 if __name__ == '__main__':
     unittest.main()

@@ -304,29 +304,50 @@ def quick_sort_part(list, left, right, partition_func = splitByLastElement, leaf
     swap(list, pivot_index, right)
 
     if trace:
-        print "after swap:", list
+        print "after swap:", list[left:right+1]
 
+    # i = left
+    # j = right
+    # while i < j:
+    #     # print "i: ", i, ", j: ", j
+    #     while list[i] < pivot_value and i < j:
+    #         i += 1
+
+    #     while list[j] >= pivot_value and i < j:
+    #         j -= 1
+
+    #     # print "swapping [", i, "] ", list[i], " and [", j, "]", list[j]
+    #     swap(list, i, j)
+
+    # dutch flag
+    lt = left
+    gt = right - 1
     i = left
-    j = right
-    while i < j:
-        # print "i: ", i, ", j: ", j
-        while list[i] < pivot_value and i < j:
+    while i <= gt:
+        if trace:
+            print list[left:right+1], "i:", i, " lt:", lt, " gt:", gt
+
+        if list[i] < pivot_value:
+            swap(list, i, lt)
+            lt += 1
             i += 1
-
-        while list[j] >= pivot_value and i < j:
-            j -= 1
-
-        # print "swapping [", i, "] ", list[i], " and [", j, "]", list[j]
-        swap(list, i, j)
+        elif list[i] > pivot_value:
+            swap(list, i, gt)
+            gt -= 1
+        else:
+            i += 1 
 
     # return pivot
     swap(list, i, right)
 
-    # print " " * 33, "range after: ", list[left:right+1]
-
+    if trace:
+        # print " " * 3, "range after: ", list[left:right+1]
+        print list[left:right+1], "i:", i, " lt:", lt, " gt:", gt
     # we need to go deeper
-    quick_sort_part(list, left, i - 1, partition_func, leaf_sort_func, trace)
-    quick_sort_part(list, i + 1, right, partition_func, leaf_sort_func, trace)
+    # quick_sort_part(list, left, i - 1, partition_func, leaf_sort_func, trace)
+    # quick_sort_part(list, i + 1, right, partition_func, leaf_sort_func, trace)
+    quick_sort_part(list, left, lt - 1, partition_func, leaf_sort_func, trace)
+    quick_sort_part(list, gt+2, right, partition_func, leaf_sort_func, trace)
 
 
 def quick_sort(list, partition_func = splitByLastElement, leaf_sort_func = None, trace = False):

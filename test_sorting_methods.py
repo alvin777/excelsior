@@ -5,6 +5,9 @@ import os
 import math
 import sys
 
+import array
+import filecmp
+
 def bubble_sort(list):
     while True:
         changed = False
@@ -233,6 +236,93 @@ def file_merge_sort(infilename, outfilename):
     else:
         os.remove(outfilename)
         os.rename(TEMP_FILE_NAME, outfilename)
+
+
+class Stream:
+    def __init__(self,streamFile, filePos, fileEndPos, wordSize = 4, bufferSize = 1024):
+        # self.buffer = array.array('c')
+        self.file = streamFile
+        self.filePos = filePos
+        self.fileEndPos = fileEndPos
+        self.wordSize = wordSize
+        self.word = "0"
+        # self.bufferPos = 0 
+        # self.bufferSize = bufferSize
+
+        if self.filePos + self.wordSize <= self.fileEndPos: 
+            self.file.seek(self.filePos)
+            self.word = self.file.read(self.wordSize)
+
+    def getWord(self):
+        return self.word
+
+    def next(self):
+        # print "{} next before".format(self)
+        self.filePos += self.wordSize
+        if self.filePos >= self.fileEndPos: 
+            # print "next returns False"
+            return False
+
+        self.file.seek(self.filePos)
+        self.word = self.file.read(self.wordSize)
+        # print "{} next after".format(self)
+        # print "size: {}, type: {}".format(self.wordSize, type(self.word))
+        return True
+
+    def __str__(self):
+        return "%s %d/%d %s" % (self.file, self.filePos, self.fileEndPos, self.word.encode('hex'))
+
+
+def external_merge_sort(infilename, outfilename, word_size = 4, memory_limit = 1024*1024):
+    
+    TEMP_FILE_NAME = "temp.dat"
+
+    with open(infilename, "rb") as infile:
+        infile.seek(0, 2)
+        infile_size = infile.tell()
+        infile.seek(0, 0)
+
+        with open(TEMP_FILE_NAME, "wb+") as temp_file, \
+             open(outfilename, "wb+") as out_file:
+
+            # Phase 1: sort parts
+            partsCount = 0
+            while infile.tell() < infile_size:
+                # print "infile.tell():", infile.tell()
+                bytes_left = (infile_size - infile.tell())
+                # values = array.array('I') # array of long integers
+                values = array.array('c')
+                values.fromfile(infile, min(memory_limit, bytes_left)/values.itemsize) # read integers
+
+                quick_sort(values,trace=False)
+                # print "after sort:", values
+
+                values.tofile(temp_file)
+                partsCount += 1
+
+            # Phase 2: n-way merge
+            streamsList = []
+            for partIndex in xrange(partsCount):
+                streamsList.append(Stream(temp_file, partIndex*memory_limit, \
+                                          min((partIndex+1)*memory_limit, infile_size), word_size))
+
+            # for stream in streamsList:
+            #     print stream
+
+            while len(streamsList) > 0:
+                minStream = streamsList[0]
+                for stream in streamsList[1:]:
+                    word = stream.getWord()
+                    # print "word: {}, minWord: {}".format(word.encode('hex'), minStream.getWord().encode('hex'))
+                    if word < minStream.getWord():
+                        minStream = stream
+
+                # print "writing: {}".format(minStream.getWord().encode('hex'))
+                out_file.write(minStream.getWord())
+                
+                if not minStream.next():
+                    streamsList.remove(minStream)
+
 
 
 def swap(list, i, j):
@@ -554,7 +644,7 @@ class TestSortingMethods(unittest.TestCase):
 
     def test_run_benchmarks(self):
 
-        # return
+        return
 
         self.result = {}
 
@@ -629,19 +719,20 @@ class TestSortingMethods(unittest.TestCase):
         randomList = [random.random() for _ in xrange(10000)]
         self.assertEqual(merge_sort(randomList), sorted(randomList))
 
-    def test_file_merge_sort(self):
-        file_merge_sort("small.dat", "small_out.dat")
+    # def test_file_merge_sort(self):
+    #     os.remove("small_out.dat")
+    #     file_merge_sort("small.dat", "small_out.dat")
 
-        prev_word = 0
-        with open("small_out.dat", "rb") as infile:
-            while True:
-                word = infile.read(4)
+    #     prev_word = 0
+    #     with open("small_out.dat", "rb") as infile:
+    #         while True:
+    #             word = infile.read(4)
 
-                if word == "":
-                    return
+    #             if word == "":
+    #                 return
 
-                self.assertTrue(word >= prev_word, "{0} should be > {1}".format(word, prev_word))
-                prev_word = word
+    #             self.assertTrue(word >= prev_word, "{0} should be > {1}".format(word, prev_word))
+    #             prev_word = word
 
     # def test_large_file_merge_sort(self):
     #     file_merge_sort("large.dat", "large_out.dat")
@@ -656,6 +747,15 @@ class TestSortingMethods(unittest.TestCase):
 
     #             self.assertTrue(word >= prev_word, "{0} should be > {1}".format(word, prev_word))
     #             prev_word = word
+
+    def test_external_merge_sort(self):
+        if os.path.exists("small2_out.dat"):
+            os.remove("small2_out.dat")
+        if os.path.exists("temp.dat"):
+            os.remove("temp.dat")
+        external_merge_sort("small2.dat", "small2_out.dat", word_size = 1, memory_limit=3)
+
+        self.assertTrue(filecmp.cmp('small2_out.dat', 'small2_sorted.dat'), "{0} should be identical to {1}".format('small2_out.dat', 'small2_sorted.dat'))
 
 
     def test_quick_sort(self):

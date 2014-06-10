@@ -16,6 +16,7 @@ from radix_sort import *
 from merge_sort import *
 from heap_sort import *
 from intro_sort import *
+from timsort import *
 
 from list_generators import *
 
@@ -196,6 +197,28 @@ class TestSortingMethods(unittest.TestCase):
 
         # for (left, right) in sorted(depthHistogram):
         #     print left, right, depthHistogram[(left, right)]
+
+    def test_timsort_count_run(self):
+        self.assertEqual(count_run([1,2,3,1], 0, 3), (3, True))
+        self.assertEqual(count_run([3,2,1,3], 0, 3), (3, False))
+
+        self.assertEqual(count_run([1,2,3,1], 3, 3), (1, True))
+        self.assertEqual(count_run([1,1,1,1], 0, 3), (4, True))
+        self.assertEqual(count_run([1,1,1,0], 0, 3), (3, True))
+
+
+    def test_timsort_reverse(self):
+        self.assertEqual(reverse([1,2,3,4], 0, 3), (4,3,2,1))
+        self.assertEqual(reverse([1,2,3,4,5], 0, 3), (5,4,3,2,1))
+
+
+    def test_timsort(self):
+        self.assertEqual(timsort([1,2,3,4,5,6,9,8,7]), [1,2,3,4,5,6,7,8,9])
+        self.assertEqual(timsort([6,8,4,9,5,3,1,2,7]), [1,2,3,4,5,6,7,8,9])
+        randomList = [int(random.random()*100) for _ in xrange(50)]
+        # randomList = [random.random() for _ in xrange(10000)]
+        self.assertEqual(timsort(randomList), sorted(randomList))
+
 
 if __name__ == '__main__':
     unittest.main()

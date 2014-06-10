@@ -10,6 +10,7 @@ from radix_sort import *
 from merge_sort import *
 from heap_sort import *
 from intro_sort import *
+from timsort import *
 
 from list_generators import *
 
@@ -49,7 +50,7 @@ def test_run_benchmarks():
     # sort_func_list = [bubble_sort, insertion_sort, insertion_sort2]
     sort_func_list = [bubble_sort, insertion_sort, insertion_sort2, selection_sort, shell_sort, \
                       merge_sort, quick_sort, lambda x: quick_sort(x, splitByMedian), heap_sort, 
-                      lambda x: radix_sort(x, 1000), intro_sort]
+                      lambda x: radix_sort(x, 1000), intro_sort, timsort]
     # sort_func_list = [quick_sort, \
     #                   lambda x: quick_sort(x, partition_func=splitByMiddleElement), \
     #                   lambda x: quick_sort(x, partition_func=splitByMedian), \

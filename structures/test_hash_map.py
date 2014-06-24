@@ -421,7 +421,7 @@ class TestOpenAddressingHashMap(unittest.TestCase):
         self.assertEqual(hash_map[101], [])
         self.assertEqual(hash_map[102], [])
 
-        print hash_map.hash_array
+        # print hash_map.hash_array
 
     def test_string_keys(self):
         hash_map = OpenAddressingHashMap()
@@ -450,7 +450,7 @@ class TestOpenAddressingHashMap(unittest.TestCase):
         self.assertEqual(hash_map[15], 10)
         self.assertEqual(hash_map[16], 20)
 
-        print hash_map.hash_array
+        # print hash_map.hash_array
 
 
 # if __name__ == '__main__':

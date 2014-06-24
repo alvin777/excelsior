@@ -140,7 +140,7 @@ class OpenAddressingHashMap:
             key_index += 1
             key_index %= self.hash_array_size
 
-            if key_index == initial_key_index:   # one loop is enough
+            if key_index == initial_key_index:   # do .. while key_index != initial_key_index
                 break
 
         if self.allow_duplicates:
@@ -160,7 +160,7 @@ class OpenAddressingHashMap:
             # print 'key_index:', key_index, 'initial_key_index:', initial_key_index, 'self.hash_array_size:', self.hash_array_size, \
                   # 'self.hash_array:', self.hash_array
 
-            if self.hash_array[key_index] in [None, self.deletedValueStub]:
+            if self.hash_array[key_index] is None or self.hash_array[key_index] is self.deletedValueStub:
                 self.hash_array[key_index] = (key, value)
                 inserted = True
                 break
@@ -386,34 +386,42 @@ class TestOpenAddressingHashMap(unittest.TestCase):
 
         # print hash_map.stats()
 
-    def test_restrict_duplicates(self):
-        hash_map = OpenAddressingHashMap()
+    def test_allow_duplicates(self):
+        hash_map = OpenAddressingHashMap(allow_duplicates=True)
         hash_map[1] = 10
         hash_map[1] = 20
 
-        self.assertEqual(hash_map.size(), 1)
-        self.assertEqual(hash_map[1], 20)
+        self.assertEqual(hash_map.size(), 2)
+        self.assertEqual(hash_map[1], [10, 20])
+        self.assertEqual(hash_map[2], [])
 
     def test_deletion(self):
-        hash_map = OpenAddressingHashMap()
+        hash_map = OpenAddressingHashMap(initial_size=100)
         hash_map[1] = 10
         hash_map[101] = 20
         del hash_map[101]
 
         self.assertEqual(hash_map.size(), 1)
         self.assertEqual(hash_map[1], 10)
+        self.assertEqual(hash_map[2], None)
         self.assertEqual(hash_map[101], None)
 
-    def test_deletion_restrict_duplicates(self):
-        hash_map = OpenAddressingHashMap()
+    def test_deletion_allow_duplicates(self):
+        hash_map = OpenAddressingHashMap(initial_size=100, allow_duplicates=True)
         hash_map[1] = 10
-        hash_map[101] = 20
-        hash_map[101] = 30
-        del hash_map[101]
+        hash_map[2] = 20
+        hash_map[1] = 30
+        hash_map[2] = 40
+        del hash_map[2]
+        hash_map[1] = 50
 
-        self.assertEqual(hash_map.size(), 1)
-        self.assertEqual(hash_map[1], 10)
-        self.assertEqual(hash_map[101], None)
+        self.assertEqual(hash_map.size(), 3)
+        self.assertEqual(hash_map[1], [10, 50, 30])
+        self.assertEqual(hash_map[2], [])
+        self.assertEqual(hash_map[101], [])
+        self.assertEqual(hash_map[102], [])
+
+        print hash_map.hash_array
 
     def test_string_keys(self):
         hash_map = OpenAddressingHashMap()
@@ -432,6 +440,18 @@ class TestOpenAddressingHashMap(unittest.TestCase):
         self.assertEqual(hash_map.size(), 2)
         self.assertEqual(hash_map[1], [10, 20])
         self.assertEqual(hash_map[2], [])
+
+    def test_overflow(self):
+        hash_map = OpenAddressingHashMap(initial_size=16)
+        hash_map[15] = 10
+        hash_map[16] = 20
+
+        self.assertEqual(hash_map.size(), 2)
+        self.assertEqual(hash_map[15], 10)
+        self.assertEqual(hash_map[16], 20)
+
+        print hash_map.hash_array
+
 
 # if __name__ == '__main__':
 #     unittest.main()

@@ -9,7 +9,7 @@ def random_generator(size):
     counter = 0
     while counter < size:
         counter += 1
-        yield int(random.random()*sys.maxint)
+        yield random.randint(0, sys.maxint)
 
 
 class ChainedHashMap:
@@ -357,8 +357,8 @@ class TestOpenAddressingHashMap(unittest.TestCase):
         reference_dict = {}
 
         for x in xrange(1000):
-            key = int(random.random()*sys.maxint)
-            value = int(random.random()*sys.maxint)
+            key = random.randint(0, sys.maxint)
+            value = random.randint(0, sys.maxint)
             reference_dict[key] = value
             hash_map[key] = value
 

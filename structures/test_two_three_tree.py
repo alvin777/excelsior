@@ -2,11 +2,6 @@ import unittest
 import logging
 import random
 
-ROOT   = 10
-RIGHT  = 11
-CENTER = 12
-LEFT   = 13
-
 class TwoThreeNode():
     def __init__(self, parent, key, left=None, right=None):
         self.parent = parent
@@ -98,41 +93,25 @@ class TwoThreeNode():
     def is_two_node(self):
         return len(self.keys) == 1
 
-    def get_node_type(self):
-        if self.parent == None:
-            return ROOT
-
-        if self == self.parent.children[0]:
-            return LEFT
-
-        if self.parent.is_three_node():
-            if self == self.parent.children[1]:
-                return CENTER
-            elif self == self.parent.children[2]:
-                return RIGHT
-        else:
-            if self == self.parent.children[1]:
-                return RIGHT
-
     def get_right_sibling(self):
-        if self.parent.is_three_node():
-            node_type = self.get_node_type()
-            if node_type == LEFT:
-                return self.parent.children[1]
-            elif node_type == CENTER:
-                return self.parent.children[2]
+        child_index = self.parent.get_child_index_for_node(self)
+        if child_index is None:
             return None
-        return self.parent.children[1]
+
+        if child_index == len(self.parent.children) - 1:
+            return None
+
+        return self.parent.children[child_index + 1]
 
     def get_left_sibling(self):
-        if self.parent.is_three_node():
-            node_type = self.get_node_type()
-            if node_type == RIGHT:
-                return self.parent.children[1]
-            elif node_type == CENTER:
-                return self.parent.children[0]
+        child_index = self.parent.get_child_index_for_node(self)
+        if child_index is None:
             return None
-        return self.parent.children[0]
+
+        if child_index == 0:
+            return None
+
+        return self.parent.children[child_index - 1]
 
     def pop_last_key(self):
         if len(self.keys) == 0:
@@ -228,7 +207,7 @@ class TwoThreeNode():
                 self.keys.pop(i)
                 break
 
-    def _is_there_3_nodes_to_the_right(self):
+    def _can_borrow_from_node_to_the_right(self):
         child_index = self.parent.get_child_index_for_node(self)
         if child_index is None:
             return False
@@ -239,7 +218,7 @@ class TwoThreeNode():
 
         return False
 
-    def _is_there_3_nodes_to_the_left(self):
+    def _can_borrow_from_node_to_the_left(self):
         child_index = self.parent.get_child_index_for_node(self)
         if child_index is None:
             return False
@@ -403,14 +382,13 @@ class TwoThreeTree:
             self.root = None
             return
 
-        if node._is_there_3_nodes_to_the_right():
+        if node._can_borrow_from_node_to_the_right():
             self._rotate_left_while_empty_node(node)
-        elif node._is_there_3_nodes_to_the_left():
+        elif node._can_borrow_from_node_to_the_left():
             self._rotate_right_while_empty_node(node)
         else:
-            node_type = node.get_node_type()
             if node.parent.is_two_node():
-                if node_type == LEFT:
+                if node.get_right_sibling() != None:
                     self._rotate_left(node)
                     self._rotate_left(node)
                 else:
@@ -424,14 +402,17 @@ class TwoThreeTree:
                     self._remove_node(node.parent)
 
             else:
-                if node_type == LEFT:
+                right_sibling = node.get_right_sibling()
+                left_sibling  = node.get_left_sibling()
+
+                if left_sibling is None:
                     self._rotate_left(node)
-                    self._rotate_right(node.get_right_sibling().get_right_sibling())
-                elif node_type == CENTER:
-                    self._rotate_right(node.get_right_sibling())
-                else:
+                    self._rotate_right(right_sibling.get_right_sibling())
+                elif right_sibling is None:
                     self._rotate_right(node)
-                    self._rotate_left(node.get_left_sibling().get_left_sibling())
+                    self._rotate_left(left_sibling.get_left_sibling())
+                else:
+                    self._rotate_right(right_sibling)
 
 
 class TestTwoThreeTree(unittest.TestCase):

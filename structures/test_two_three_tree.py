@@ -7,12 +7,6 @@ RIGHT  = 11
 CENTER = 12
 LEFT   = 13
 
-NEAR_3_NODE_LEFT  = 20
-NEAR_3_NODE_RIGHT = 21
-FAR_3_NODE_LEFT   = 22
-FAR_3_NODE_RIGHT  = 23
-NEAR_2_NODE       = 24
-
 class TwoThreeNode():
     def __init__(self, parent, key, left=None, right=None):
         self.parent = parent
@@ -229,8 +223,25 @@ class TwoThreeNode():
         elif key == self.keys[1]:
             del self.keys[1]
 
+    def _is_there_3_nodes_to_the_right(self):
+        for i in xrange(len(self.parent.children)):
+            if self.parent.children[i] == self:
+                for j in xrange(i + 1, len(self.parent.children)):
+                    if self.parent.children[j].is_three_node():
+                        return True
+                break
 
+        return False
 
+    def _is_there_3_nodes_to_the_left(self):
+        for i in xrange(len(self.parent.children)):
+            if self.parent.children[i] == self:
+                for j in xrange(i - 1, -1, -1):
+                    if self.parent.children[j].is_three_node():
+                        return True
+                break
+
+        return False
 
 class TwoThreeTree:
     def __init__(self):
@@ -286,37 +297,15 @@ class TwoThreeTree:
             # root
             self.root = TwoThreeNode(None, key, left, right)
 
-    def _get_node_sibling_type(self, node):
-        if (node.parent.is_three_node()):
-            if node == node.parent.children[0]:
-                # LEFT
-                if node.parent.children[1].is_three_node():
-                    return NEAR_3_NODE_RIGHT
-                elif node.parent.children[2].is_three_node():
-                    return FAR_3_NODE_RIGHT
-            elif node == node.parent.children[1]:
-                # CENTER
-                if node.parent.children[0].is_three_node():
-                    return NEAR_3_NODE_LEFT
-                elif node.parent.children[2].is_three_node():
-                    return NEAR_3_NODE_RIGHT
-            if node == node.parent.children[2]:
-                # LEFT
-                if node.parent.children[0].is_three_node():
-                    return FAR_3_NODE_LEFT
-                elif node.parent.children[1].is_three_node():
-                    return NEAR_3_NODE_LEFT
-        else:
-            if node == node.parent.children[0]:
-                # LEFT
-                if node.parent.children[1].is_three_node():
-                    return NEAR_3_NODE_RIGHT
-            elif node == node.parent.children[1]:
-                # RIGHT
-                if node.parent.children[0].is_three_node():
-                    return NEAR_3_NODE_LEFT
+    def _rotate_right_while_empty_node(self, node):
+        while len(node.keys) == 0:
+            self._rotate_right(node)
+            node = node.get_left_sibling()
 
-        return NEAR_2_NODE
+    def _rotate_left_while_empty_node(self, node):
+        while len(node.keys) == 0:
+            self._rotate_left(node)
+            node = node.get_right_sibling()
 
     def _rotate_left(self, node):
         sibling = node.get_right_sibling()
@@ -334,8 +323,8 @@ class TwoThreeTree:
 
         logging.debug('_rotate_right, node: (%s), parent: (%s), sibling: (%s)', \
             node, node.parent, sibling)
-        logging.debug('node.children: (%s)', '; '.join(map(str, node.children)))
-        logging.debug('parent.children: (%s)', '; '.join(map(str, node.parent.children)))
+        # logging.debug('node.children: (%s)', '; '.join(map(str, node.children)))
+        # logging.debug('parent.children: (%s)', '; '.join(map(str, node.parent.children)))
 
         node.insert_key(node.get_left_parent_key())
         node.set_left_parent_key(sibling.pop_last_key())
@@ -343,8 +332,8 @@ class TwoThreeTree:
 
         logging.debug('_rotate_right complete, node: (%s), parent: (%s), sibling: (%s)', \
             node, node.parent, sibling)
-        logging.debug('node.children: (%s)', '; '.join(map(str, node.children)))
-        logging.debug('parent.children: (%s)', '; '.join(map(str, node.parent.children)))
+        # logging.debug('node.children: (%s)', '; '.join(map(str, node.children)))
+        # logging.debug('parent.children: (%s)', '; '.join(map(str, node.parent.children)))
 
     def _double_rotate_left(self, node):
         sibling = node.get_right_sibling()
@@ -421,17 +410,11 @@ class TwoThreeTree:
             self.root = None
             return
 
-        sibling_type = self._get_node_sibling_type(node)
-
-        if sibling_type == NEAR_3_NODE_LEFT:
-            self._rotate_right(node)
-        elif sibling_type == NEAR_3_NODE_RIGHT:
-            self._rotate_left(node)
-        elif sibling_type == FAR_3_NODE_LEFT:
-            self._double_rotate_right(node)
-        elif sibling_type == FAR_3_NODE_RIGHT:
-            self._double_rotate_left(node)
-        elif sibling_type == NEAR_2_NODE:
+        if node._is_there_3_nodes_to_the_right():
+            self._rotate_left_while_empty_node(node)
+        elif node._is_there_3_nodes_to_the_left():
+            self._rotate_right_while_empty_node(node)
+        else:
             node_type = node.get_node_type()
             if node.parent.is_two_node():
                 if node_type == LEFT:
@@ -456,6 +439,7 @@ class TwoThreeTree:
                 else:
                     self._rotate_right(node)
                     self._rotate_left(node.get_left_sibling().get_left_sibling())
+
 
 class TestTwoThreeTree(unittest.TestCase):
 

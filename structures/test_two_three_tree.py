@@ -27,24 +27,209 @@ class TwoThreeNode():
     def __str__(self):
         return str(self.keys)[1:-1]
 
+    def get_height(self):
+        height = 0
+        node = self
+        while node:
+            height += 1
+            node = node.parent
 
-    # def insert_key(self, key):
-    #     # 2-node
-    #     #   - lt key
-    #     #   - gt key
-    #     # 3-node
-    #     #   - lt key 1
-    #     #   - lt key 2
-    #     #   - gt key 2
-    #     if len(self.keys) < 1 or len(self.keys) > 2:
-    #         raise Exception()
+        return height
 
-    # def get_child_for_key(self, key):
-    #     for i in xrange(len(self.keys)):
-    #         if key < keys[i]:
-    #             return self.children[i]
+    def get_child_for_key(self, key):
+        if len(self.children) == 0:
+            return None
 
-    #     return children[-1]
+        for i in xrange(len(self.keys)):
+            if key < self.keys[i]:
+                return self.children[i]
+
+        return self.children[-1]
+
+    def insert_key_to_correct_pos(self, key):
+        assert len(self.children) == 0
+
+        if key > self.keys[-1]:
+            self.keys.append(key)
+        else:
+            insert_pos = 0
+            while insert_pos < len(self.keys) and key > self.keys[insert_pos]:
+                insert_pos += 1
+
+            self.keys.insert(insert_pos, key)
+
+    def split_node(self):
+        assert len(self.keys) == 3
+        assert len(self.children) in [0, 4]
+
+        children = [None]*4 if len(self.children) == 0 else self.children
+
+        left = TwoThreeNode(self, self.keys[0], children[0], children[1])
+        key = self.keys[1]
+        right = TwoThreeNode(self, self.keys[2], children[2], children[3])
+        return (key, left, right)
+
+    def merge_node(self, key, left, right):
+
+        # print 'merge_node self: {}, key: {}, left: {}, right: {}'.format(node, key, left, right)
+        if key > self.keys[-1]:
+            self.keys.append(key)
+            self.children[-1] = left
+            self.children.append(right)
+        else:
+            insert_pos = 0
+            while insert_pos < len(self.keys) and key > self.keys[insert_pos]:
+                insert_pos += 1
+
+            self.keys.insert(insert_pos, key)
+            self.children[insert_pos] = left
+            self.children.insert(insert_pos+1, right)
+            
+        left.parent = self
+        right.parent = self
+
+    def is_leaf(self):
+        return len(self.children) == 0
+
+    def is_three_node(self):
+        return len(self.keys) == 2
+
+    def is_two_node(self):
+        return len(self.keys) == 1
+
+    def get_node_type(self):
+        if self.parent == None:
+            return ROOT
+
+        if self == self.parent.children[0]:
+            return LEFT
+
+        if self.parent.is_three_node():
+            if self == self.parent.children[1]:
+                return CENTER
+            elif self == self.parent.children[2]:
+                return RIGHT
+        else:
+            if self == self.parent.children[1]:
+                return RIGHT
+
+    def get_right_sibling(self):
+        if self.parent.is_three_node():
+            node_type = self.get_node_type()
+            if node_type == LEFT:
+                return self.parent.children[1]
+            elif node_type == CENTER:
+                return self.parent.children[2]
+            return None
+        return self.parent.children[1]
+
+    def get_left_sibling(self):
+        if self.parent.is_three_node():
+            node_type = self.get_node_type()
+            if node_type == RIGHT:
+                return self.parent.children[1]
+            elif node_type == CENTER:
+                return self.parent.children[0]
+            return None
+        return self.parent.children[0]
+
+    def pop_last_key(self):
+        if len(self.keys) == 0:
+            return None
+
+        return self.keys.pop()
+
+    def pop_first_key(self):
+        if len(self.keys) == 0:
+            return None
+
+        key = self.keys[0]
+        self.keys = self.keys[1:]
+        return key
+
+    def pop_last_child(self):
+        if len(self.children) == 0:
+            return None
+
+        return self.children.pop()
+
+    def pop_first_child(self):
+        if len(self.children) == 0:
+            return None
+
+        child = self.children[0]
+        self.children = self.children[1:]
+        return child
+
+    def insert_key(self, key):
+        self.keys.insert(0, key)
+
+    def append_key(self, key):
+        self.keys.append(key)
+
+    def insert_child(self, child):
+        if child is None:
+            return
+
+        self.children.insert(0, child)
+        child.parent = self
+
+    def append_child(self, child):
+        if child is None:
+            return
+
+        self.children.append(child)
+        child.parent = self
+
+    def get_left_parent_key(self):
+        for i in xrange(len(self.parent.children)):
+            if self.parent.children[i] == self:
+                return self.parent.keys[i - 1]
+
+        return None
+
+    def get_right_parent_key(self):
+        for i in xrange(len(self.parent.children)):
+            if self.parent.children[i] == self:
+                return self.parent.keys[i]
+
+        return None
+
+    def set_left_parent_key(self, key):
+        for i in xrange(len(self.parent.children)):
+            if self.parent.children[i] == self:
+                if key is None:
+                    self.parent.keys.pop(i - 1)
+                    self.parent.children.pop(i - 1)
+                else:
+                    self.parent.keys[i - 1] = key
+
+                break;
+
+    def set_right_parent_key(self, key):
+        for i in xrange(len(self.parent.children)):
+            if self.parent.children[i] == self:
+                if key is None:
+                    self.parent.keys.pop(i)
+                    self.parent.children.pop(i + 1)
+                else:
+                    self.parent.keys[i] = key
+
+                break;
+
+    def remove_leaf_3_node_key(self, key):
+        assert self.is_leaf()
+        assert self.is_three_node()
+        assert key in self.keys
+
+        if key == self.keys[0]:
+            self.keys[0] = self.keys[1]
+            del self.keys[1]
+
+        elif key == self.keys[1]:
+            del self.keys[1]
+
+
 
 
 class TwoThreeTree:
@@ -63,29 +248,11 @@ class TwoThreeTree:
         if key in node.keys:
             return (True, node)
 
-        child_node = self.get_child_for_key(node, key)
+        child_node = node.get_child_for_key(key)
         if child_node is not None:
             return self.search(child_node, key)
 
         return (False, node)
-
-    def get_node_height(self, node):
-        height = 0
-        while node:
-            height += 1
-            node = node.parent
-
-        return height
-
-    def get_child_for_key(self, node, key):
-        if len(node.children) == 0:
-            return None
-
-        for i in xrange(len(node.keys)):
-            if key < node.keys[i]:
-                return node.children[i]
-
-        return node.children[-1]
 
     def insert(self, key):
         if self.root is None:
@@ -96,310 +263,128 @@ class TwoThreeTree:
         if found:
             return   # do not allow same values
 
-        self.insert_key_new_pos(target_node, key)
+        self.insert_key_to_correct_pos(target_node, key)
 
-    def insert_key_new_pos(self, node, key):
-        # assert node has no children
-        # assert no duplicate keys
-
-        if key > node.keys[-1]:
-            node.keys.append(key)
-        else:
-            insert_pos = 0
-            while insert_pos < len(node.keys) and key > node.keys[insert_pos]:
-                insert_pos += 1
-
-            node.keys.insert(insert_pos, key)
+    def insert_key_to_correct_pos(self, node, key):
+        node.insert_key_to_correct_pos(key)
 
         if len(node.keys) >= 3:
-            self.fix_tree(node)
+            self._fix_tree(node)
 
-    def fix_tree(self, node):
+    def _fix_tree(self, node):
         # assert node has three keys
 
-        (key, left, right) = self.split_node(node)
+        (key, left, right) = node.split_node()
 
-        # print 'fix_tree node: {}, key: {}, left: {}, right: {}'.format(node, key, left, right)
+        # print '_fix_tree node: {}, key: {}, left: {}, right: {}'.format(node, key, left, right)
 
         if node.parent:
-            self.merge_node(node.parent, key, left, right)
+            node.parent.merge_node(key, left, right)
             if len(node.parent.keys) >= 3:
-                self.fix_tree(node.parent)
+                self._fix_tree(node.parent)
         else:
             # root
             self.root = TwoThreeNode(None, key, left, right)
 
-    def split_node(self, node):
-        # assert node has three keys
-        # assert node has four children
-
-        children = [None]*4 if len(node.children) == 0 else node.children
-
-        left = TwoThreeNode(node, node.keys[0], children[0], children[1])
-        key = node.keys[1]
-        right = TwoThreeNode(node, node.keys[2], children[2], children[3])
-        return (key, left, right)
-
-    def merge_node(self, node, key, left, right):
-
-        # print 'merge_node node: {}, key: {}, left: {}, right: {}'.format(node, key, left, right)
-        if key > node.keys[-1]:
-            node.keys.append(key)
-            node.children[-1] = left
-            node.children.append(right)
-        else:
-            insert_pos = 0
-            while insert_pos < len(node.keys) and key > node.keys[insert_pos]:
-                insert_pos += 1
-
-            node.keys.insert(insert_pos, key)
-            node.children[insert_pos] = left
-            node.children.insert(insert_pos+1, right)
-            
-        left.parent = node
-        right.parent = node
-
-
-    def is_leaf(self, node):
-        return len(node.children) == 0
-
-    def is_three_node(self, node):
-        return len(node.keys) == 2
-
-    def is_two_node(self, node):
-        return len(node.keys) == 1
-
-    def get_node_type(self, node):
-        if node.parent == None:
-            return ROOT
-
-        if node == node.parent.children[0]:
-            return LEFT
-
-        if self.is_three_node(node.parent):
-            if node == node.parent.children[1]:
-                return CENTER
-            elif node == node.parent.children[2]:
-                return RIGHT
-        else:
-            if node == node.parent.children[1]:
-                return RIGHT
-
-    def get_node_sibling_type(self, node):
-        if (self.is_three_node(node.parent)):
+    def _get_node_sibling_type(self, node):
+        if (node.parent.is_three_node()):
             if node == node.parent.children[0]:
                 # LEFT
-                if self.is_three_node(node.parent.children[1]):
+                if node.parent.children[1].is_three_node():
                     return NEAR_3_NODE_RIGHT
-                elif self.is_three_node(node.parent.children[2]):
+                elif node.parent.children[2].is_three_node():
                     return FAR_3_NODE_RIGHT
             elif node == node.parent.children[1]:
                 # CENTER
-                if self.is_three_node(node.parent.children[0]):
+                if node.parent.children[0].is_three_node():
                     return NEAR_3_NODE_LEFT
-                elif self.is_three_node(node.parent.children[2]):
+                elif node.parent.children[2].is_three_node():
                     return NEAR_3_NODE_RIGHT
             if node == node.parent.children[2]:
                 # LEFT
-                if self.is_three_node(node.parent.children[0]):
+                if node.parent.children[0].is_three_node():
                     return FAR_3_NODE_LEFT
-                elif self.is_three_node(node.parent.children[1]):
+                elif node.parent.children[1].is_three_node():
                     return NEAR_3_NODE_LEFT
         else:
             if node == node.parent.children[0]:
                 # LEFT
-                if self.is_three_node(node.parent.children[1]):
+                if node.parent.children[1].is_three_node():
                     return NEAR_3_NODE_RIGHT
             elif node == node.parent.children[1]:
                 # RIGHT
-                if self.is_three_node(node.parent.children[0]):
+                if node.parent.children[0].is_three_node():
                     return NEAR_3_NODE_LEFT
 
         return NEAR_2_NODE
 
-    def get_right_sibling(self, node):
-        if self.is_three_node(node.parent):
-            node_type = self.get_node_type(node)
-            if node_type == LEFT:
-                return node.parent.children[1]
-            elif node_type == CENTER:
-                return node.parent.children[2]
-            return None
-        return node.parent.children[1]
+    def _rotate_left(self, node):
+        sibling = node.get_right_sibling()
 
-    def get_left_sibling(self, node):
-        if self.is_three_node(node.parent):
-            node_type = self.get_node_type(node)
-            if node_type == RIGHT:
-                return node.parent.children[1]
-            elif node_type == CENTER:
-                return node.parent.children[0]
-            return None
-        return node.parent.children[0]
+        logging.debug('_rotate_left, node: (%s), parent: (%s), sibling: (%s)', node, node.parent, sibling)
 
-    def pop_last_key(self, node):
-        if len(node.keys) == 0:
-            return None
+        node.append_key(node.get_right_parent_key())
+        node.set_right_parent_key(sibling.pop_first_key())
+        node.append_child(sibling.pop_first_child())
 
-        return node.keys.pop()
+        logging.debug('_rotate_left complete, node: (%s), parent: (%s), sibling: (%s)', node, node.parent, sibling)
 
-    def pop_first_key(self, node):
-        if len(node.keys) == 0:
-            return None
+    def _rotate_right(self, node):
+        sibling = node.get_left_sibling()
 
-        key = node.keys[0]
-        node.keys = node.keys[1:]
-        return key
-
-    def pop_last_child(self, node):
-        if len(node.children) == 0:
-            return None
-
-        return node.children.pop()
-
-    def pop_first_child(self, node):
-        if len(node.children) == 0:
-            return None
-
-        child = node.children[0]
-        node.children = node.children[1:]
-        return child
-
-    def insert_key(self, node, key):
-        node.keys.insert(0, key)
-
-    def append_key(self, node, key):
-        node.keys.append(key)
-
-    def insert_child(self, node, child):
-        if child is None:
-            return
-
-        node.children.insert(0, child)
-        child.parent = node
-
-    def append_child(self, node, child):
-        if child is None:
-            return
-
-        node.children.append(child)
-        child.parent = node
-
-    def get_left_parent_key(self, node):
-        for i in xrange(len(node.parent.children)):
-            if node.parent.children[i] == node:
-                return node.parent.keys[i - 1]
-
-        return None
-
-    def get_right_parent_key(self, node):
-        for i in xrange(len(node.parent.children)):
-            if node.parent.children[i] == node:
-                return node.parent.keys[i]
-
-        return None
-
-    def set_left_parent_key(self, node, key):
-        for i in xrange(len(node.parent.children)):
-            if node.parent.children[i] == node:
-                if key is None:
-                    node.parent.keys.pop(i - 1)
-                    node.parent.children.pop(i - 1)
-                else:
-                    node.parent.keys[i - 1] = key
-
-                break;
-
-    def set_right_parent_key(self, node, key):
-        for i in xrange(len(node.parent.children)):
-            if node.parent.children[i] == node:
-                if key is None:
-                    node.parent.keys.pop(i)
-                    node.parent.children.pop(i + 1)
-                else:
-                    node.parent.keys[i] = key
-
-                break;
-
-    def rotate_left(self, node):
-        sibling = self.get_right_sibling(node)
-
-        logging.debug('rotate_left, node: (%s), parent: (%s), sibling: (%s)', node, node.parent, sibling)
-
-        self.append_key(node, self.get_right_parent_key(node))
-        self.set_right_parent_key(node, self.pop_first_key(sibling))
-        self.append_child(node, self.pop_first_child(sibling))
-
-        logging.debug('rotate_left complete, node: (%s), parent: (%s), sibling: (%s)', node, node.parent, sibling)
-
-    def rotate_right(self, node):
-        sibling = self.get_left_sibling(node)
-
-        logging.debug('rotate_right, node: (%s), parent: (%s), sibling: (%s)', \
+        logging.debug('_rotate_right, node: (%s), parent: (%s), sibling: (%s)', \
             node, node.parent, sibling)
         logging.debug('node.children: (%s)', '; '.join(map(str, node.children)))
         logging.debug('parent.children: (%s)', '; '.join(map(str, node.parent.children)))
 
-        self.insert_key(node, self.get_left_parent_key(node))
-        self.set_left_parent_key(node, self.pop_last_key(sibling))
-        self.insert_child(node, self.pop_last_child(sibling))
+        node.insert_key(node.get_left_parent_key())
+        node.set_left_parent_key(sibling.pop_last_key())
+        node.insert_child(sibling.pop_last_child())
 
-        logging.debug('rotate_right complete, node: (%s), parent: (%s), sibling: (%s)', \
+        logging.debug('_rotate_right complete, node: (%s), parent: (%s), sibling: (%s)', \
             node, node.parent, sibling)
         logging.debug('node.children: (%s)', '; '.join(map(str, node.children)))
         logging.debug('parent.children: (%s)', '; '.join(map(str, node.parent.children)))
 
-    def double_rotate_left(self, node):
-        sibling = self.get_right_sibling(node)
-        logging.debug('double_rotate_left, node: (%s), parent: (%s), sibling: (%s)', node, node.parent, sibling)
+    def _double_rotate_left(self, node):
+        sibling = node.get_right_sibling()
+        logging.debug('_double_rotate_left, node: (%s), parent: (%s), sibling: (%s)', node, node.parent, sibling)
 
-        self.rotate_left(node)
-        self.rotate_left(sibling)
+        self._rotate_left(node)
+        self._rotate_left(sibling)
 
-    def double_rotate_right(self, node):
-        sibling = self.get_left_sibling(node)
-        logging.debug('double_rotate_right, node: (%s), parent: (%s), sibling: (%s)', node, node.parent, sibling)
+    def _double_rotate_right(self, node):
+        sibling = node.get_left_sibling()
+        logging.debug('_double_rotate_right, node: (%s), parent: (%s), sibling: (%s)', node, node.parent, sibling)
 
-        self.rotate_right(node)
-        self.rotate_right(sibling)
+        self._rotate_right(node)
+        self._rotate_right(sibling)
 
-    def remove_leaf_3_node_key(self, node, key):
-        assert self.is_leaf(node)
-        assert self.is_three_node(node)
-        assert key in node.keys
-
-        if key == node.keys[0]:
-            node.keys[0] = node.keys[1]
-            del node.keys[1]
-
-        elif key == node.keys[1]:
-            del node.keys[1]
-
-    def find_predessor(self, node, key):
-        assert not self.is_leaf(node)
+    def _find_predessor(self, node, key):
+        assert not node.is_leaf()
 
         for i in xrange(len(node.keys)):
             if node.keys[i] == key:
                 left_child = node.children[i]
                 break
 
-        if self.is_leaf(left_child):
+        if left_child.is_leaf():
             return left_child
 
         rightmost_child = left_child.children[-1]
-        while not self.is_leaf(rightmost_child):
+        while not rightmost_child.is_leaf():
             rightmost_child = rightmost_child.children[-1]
 
         return rightmost_child
 
-    def swap_keys(self, node, predessor, key):
-        logging.debug('swap_keys, node: (%s), predessor: (%s), key: (%s)', node, predessor, key)
+    def _swap_keys(self, node, predessor, key):
+        logging.debug('_swap_keys, node: (%s), predessor: (%s), key: (%s)', node, predessor, key)
         for i in xrange(len(node.keys)):
             if node.keys[i] == key:
 
                 node.keys[i], predessor.keys[-1] = predessor.keys[-1], node.keys[i]
                 break
-        logging.debug('swap_keys complete, node: (%s), predessor: (%s), key: (%s)', node, predessor, key)
+        logging.debug('_swap_keys complete, node: (%s), predessor: (%s), key: (%s)', node, predessor, key)
 
     def remove(self, key):
         # find node
@@ -414,63 +399,63 @@ class TwoThreeTree:
         if not found:
             return
 
-        if not self.is_leaf(node):
-            predessor = self.find_predessor(node, key)
+        if not node.is_leaf():
+            predessor = self._find_predessor(node, key)
             logging.debug('predessor: (%s)', predessor)
-            self.swap_keys(node, predessor, key)
+            self._swap_keys(node, predessor, key)
             logging.debug('after swap, node: (%s), predessor: (%s)', node, predessor)
             node = predessor
 
-        if self.is_three_node(node):
-            self.remove_leaf_3_node_key(node, key)
+        if node.is_three_node():
+            node.remove_leaf_3_node_key(key)
             return
 
-        self.pop_last_key(node)
-        self.pop_last_child(node)
+        node.pop_last_key()
+        node.pop_last_child()
 
-        self.remove_node(node)
+        self._remove_node(node)
 
-    def remove_node(self, node):
+    def _remove_node(self, node):
 
-        if node == self.root and self.is_leaf(self.root):
+        if node == self.root and self.root.is_leaf():
             self.root = None
             return
 
-        sibling_type = self.get_node_sibling_type(node)
+        sibling_type = self._get_node_sibling_type(node)
 
         if sibling_type == NEAR_3_NODE_LEFT:
-            self.rotate_right(node)
+            self._rotate_right(node)
         elif sibling_type == NEAR_3_NODE_RIGHT:
-            self.rotate_left(node)
+            self._rotate_left(node)
         elif sibling_type == FAR_3_NODE_LEFT:
-            self.double_rotate_right(node)
+            self._double_rotate_right(node)
         elif sibling_type == FAR_3_NODE_RIGHT:
-            self.double_rotate_left(node)
+            self._double_rotate_left(node)
         elif sibling_type == NEAR_2_NODE:
-            node_type = self.get_node_type(node)
-            if self.is_two_node(node.parent):
+            node_type = node.get_node_type()
+            if node.parent.is_two_node():
                 if node_type == LEFT:
-                    self.rotate_left(node)
-                    self.rotate_left(node)
+                    self._rotate_left(node)
+                    self._rotate_left(node)
                 else:
-                    self.rotate_right(node)
-                    self.rotate_right(node)
+                    self._rotate_right(node)
+                    self._rotate_right(node)
 
                 if node.parent == self.root:
                     self.root = node
                     node.parent = None
                 else:
-                    self.remove_node(node.parent)
+                    self._remove_node(node.parent)
 
             else:
                 if node_type == LEFT:
-                    self.rotate_left(node)
-                    self.rotate_right(self.get_right_sibling(self.get_right_sibling(node)))
+                    self._rotate_left(node)
+                    self._rotate_right(node.get_right_sibling().get_right_sibling())
                 elif node_type == CENTER:
-                    self.rotate_right(self.get_right_sibling(node))
+                    self._rotate_right(node.get_right_sibling())
                 else:
-                    self.rotate_right(node)
-                    self.rotate_left(self.get_left_sibling(self.get_left_sibling(node)))
+                    self._rotate_right(node)
+                    self._rotate_left(node.get_left_sibling().get_left_sibling())
 
 class TestTwoThreeTree(unittest.TestCase):
 
@@ -701,11 +686,11 @@ class TestTwoThreeTree(unittest.TestCase):
         if len(node.keys) == 2:
             self.assertTrue(node.keys[0] < node.keys[1])
 
-        if tree.is_leaf(node):
+        if node.is_leaf():
             if self.tree_height is None:
-                self.tree_height = tree.get_node_height(node)
+                self.tree_height = node.get_height()
             else:
-                self.assertEquals(self.tree_height, tree.get_node_height(node))
+                self.assertEquals(self.tree_height, node.get_height())
         else:
             self.assertTrue(node.children[0].keys[-1] < node.keys[0])
             self.assertTrue(node.children[1].keys[0]  > node.keys[0])
@@ -735,16 +720,10 @@ class TestTwoThreeTree(unittest.TestCase):
         tree.breadth_first_search(print_node)
 
     def test_random_data(self):
-        # random.seed()
-        # random_list = [random.randint(0, 2**30) for _ in xrange(len(1000))]
-        # sorted_list = [x for x in xrange(10000)]
-        # shuffled_list = sorted_list
-        # random.shuffle(shuffled_list)
-
         tree = TwoThreeTree()
         reference_list = []
 
-        for i in xrange(10000):
+        for i in xrange(1000):
             if (len(reference_list) == 0) or (random.random() >= 0.25):
                 new_value = random.randint(0, 2**30)
                 logging.debug("inserting value: %d", new_value)
@@ -763,11 +742,7 @@ class TestTwoThreeTree(unittest.TestCase):
         tree.breadth_first_search(lambda node: self.assert_two_three_node(tree, node))
 
         tree_list = []
-
-        def make_list(node):
-            tree_list.extend(node.keys)
-
-        tree.breadth_first_search(make_list)
+        tree.breadth_first_search(lambda node: tree_list.extend(node.keys))
 
         self.assertEquals(sorted(reference_list), sorted(tree_list))
 

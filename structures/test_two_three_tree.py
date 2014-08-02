@@ -242,14 +242,16 @@ class TwoThreeTree:
             stack.extend(node.children)
 
     def search(self, node, key):
-        if key in node.keys:
-            return (True, node)
+        while node is not None:
+            if key in node.keys:
+                return (True, node)
 
-        child_node = node.get_child_for_key(key)
-        if child_node is not None:
-            return self.search(child_node, key)
+            child_node = node.get_child_for_key(key)
+            if child_node is None:
+                return (False, node)
 
-        return (False, node)
+            node = child_node
+
 
     def insert(self, key):
         if self.root is None:
@@ -309,8 +311,6 @@ class TwoThreeTree:
 
         logging.debug('_rotate_right, node: (%s), parent: (%s), sibling: (%s)', \
             node, node.parent, sibling)
-        # logging.debug('node.children: (%s)', '; '.join(map(str, node.children)))
-        # logging.debug('parent.children: (%s)', '; '.join(map(str, node.parent.children)))
 
         node.insert_key(node.get_left_parent_key())
         node.set_left_parent_key(sibling.pop_last_key())
@@ -318,8 +318,6 @@ class TwoThreeTree:
 
         logging.debug('_rotate_right complete, node: (%s), parent: (%s), sibling: (%s)', \
             node, node.parent, sibling)
-        # logging.debug('node.children: (%s)', '; '.join(map(str, node.children)))
-        # logging.debug('parent.children: (%s)', '; '.join(map(str, node.parent.children)))
 
     def _find_predessor(self, node, key):
         assert not node.is_leaf()
@@ -388,7 +386,7 @@ class TwoThreeTree:
             self._rotate_right_while_empty_node(node)
         else:
             if node.parent.is_two_node():
-                if node.get_right_sibling() != None:
+                if node.get_right_sibling() is not None:
                     self._rotate_left(node)
                     self._rotate_left(node)
                 else:

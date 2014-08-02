@@ -1,5 +1,6 @@
 import unittest
 import logging
+import random
 
 ROOT   = 10
 RIGHT  = 11
@@ -50,6 +51,14 @@ class TwoThreeTree:
     def __init__(self):
         self.root = None
 
+    def breadth_first_search(self, f):
+        stack = [self.root]
+
+        while len(stack) > 0:
+            node = stack.pop(0)
+            f(node)
+            stack.extend(node.children)
+
     def search(self, node, key):
         if key in node.keys:
             return (True, node)
@@ -59,6 +68,14 @@ class TwoThreeTree:
             return self.search(child_node, key)
 
         return (False, node)
+
+    def get_node_height(self, node):
+        height = 0
+        while node:
+            height += 1
+            node = node.parent
+
+        return height
 
     def get_child_for_key(self, node, key):
         if len(node.children) == 0:
@@ -244,7 +261,7 @@ class TwoThreeTree:
         if len(node.children) == 0:
             return None
 
-        child = node.chilren[0]
+        child = node.children[0]
         node.children = node.children[1:]
         return child
 
@@ -320,8 +337,8 @@ class TwoThreeTree:
 
         logging.debug('rotate_right, node: (%s), parent: (%s), sibling: (%s)', \
             node, node.parent, sibling)
-        logging.debug('node.chilren: (%s)', '; '.join(map(str, node.children)))
-        logging.debug('parent.chilren: (%s)', '; '.join(map(str, node.parent.children)))
+        logging.debug('node.children: (%s)', '; '.join(map(str, node.children)))
+        logging.debug('parent.children: (%s)', '; '.join(map(str, node.parent.children)))
 
         self.insert_key(node, self.get_left_parent_key(node))
         self.set_left_parent_key(node, self.pop_last_key(sibling))
@@ -329,8 +346,8 @@ class TwoThreeTree:
 
         logging.debug('rotate_right complete, node: (%s), parent: (%s), sibling: (%s)', \
             node, node.parent, sibling)
-        logging.debug('node.chilren: (%s)', '; '.join(map(str, node.children)))
-        logging.debug('parent.chilren: (%s)', '; '.join(map(str, node.parent.children)))
+        logging.debug('node.children: (%s)', '; '.join(map(str, node.children)))
+        logging.debug('parent.children: (%s)', '; '.join(map(str, node.parent.children)))
 
     def double_rotate_left(self, node):
         sibling = self.get_right_sibling(node)
@@ -358,6 +375,31 @@ class TwoThreeTree:
         elif key == node.keys[1]:
             del node.keys[1]
 
+    def find_predessor(self, node, key):
+        assert not self.is_leaf(node)
+
+        for i in xrange(len(node.keys)):
+            if node.keys[i] == key:
+                left_child = node.children[i]
+                break
+
+        if self.is_leaf(left_child):
+            return left_child
+
+        rightmost_child = left_child.children[-1]
+        while not self.is_leaf(rightmost_child):
+            rightmost_child = rightmost_child.children[-1]
+
+        return rightmost_child
+
+    def swap_keys(self, node, predessor, key):
+        logging.debug('swap_keys, node: (%s), predessor: (%s), key: (%s)', node, predessor, key)
+        for i in xrange(len(node.keys)):
+            if node.keys[i] == key:
+
+                node.keys[i], predessor.keys[-1] = predessor.keys[-1], node.keys[i]
+                break
+        logging.debug('swap_keys complete, node: (%s), predessor: (%s), key: (%s)', node, predessor, key)
 
     def remove(self, key):
         # find node
@@ -374,7 +416,9 @@ class TwoThreeTree:
 
         if not self.is_leaf(node):
             predessor = self.find_predessor(node, key)
-            self.swap_key(predessor, node, key)
+            logging.debug('predessor: (%s)', predessor)
+            self.swap_keys(node, predessor, key)
+            logging.debug('after swap, node: (%s), predessor: (%s)', node, predessor)
             node = predessor
 
         if self.is_three_node(node):
@@ -387,6 +431,11 @@ class TwoThreeTree:
         self.remove_node(node)
 
     def remove_node(self, node):
+
+        if node == self.root and self.is_leaf(self.root):
+            self.root = None
+            return
+
         sibling_type = self.get_node_sibling_type(node)
 
         if sibling_type == NEAR_3_NODE_LEFT:
@@ -635,4 +684,93 @@ class TestTwoThreeTree(unittest.TestCase):
         self.assert_node(tree.root.children[1], [3], 0)
         self.assert_node(tree.root.children[2], [5, 6], 0)
 
-logging.basicConfig(format='%(levelname)-7s %(message)s', level=logging.DEBUG)
+    def test_del_non_leaf(self):
+        tree = self.create_sequential_tree(7)  #      4
+                                               #   2     6
+                                               # 1  3   5  7
+        tree.remove(6)
+
+        self.assert_node(tree.root, [2, 4], 3)               #   2,4
+        self.assert_node(tree.root.children[0], [1], 0)      # 1  3  5,7
+        self.assert_node(tree.root.children[1], [3], 0)
+        self.assert_node(tree.root.children[2], [5, 7], 0)
+
+    def assert_two_three_node(self, tree, node):
+        self.assertIn(len(node.keys), [1, 2])
+
+        if len(node.keys) == 2:
+            self.assertTrue(node.keys[0] < node.keys[1])
+
+        if tree.is_leaf(node):
+            if self.tree_height is None:
+                self.tree_height = tree.get_node_height(node)
+            else:
+                self.assertEquals(self.tree_height, tree.get_node_height(node))
+        else:
+            self.assertTrue(node.children[0].keys[-1] < node.keys[0])
+            self.assertTrue(node.children[1].keys[0]  > node.keys[0])
+
+            if len(node.keys) == 1:
+                self.assertEquals(len(node.children), 2)
+
+            if len(node.keys) == 2:
+                self.assertEquals(len(node.children), 3)
+                self.assertTrue(node.children[1].keys[-1] < node.keys[1])
+                self.assertTrue(node.children[2].keys[0]  > node.keys[1])
+
+            for child in node.children:
+                self.assertEquals(child.parent, node)
+
+    def test_bfs(self):
+        tree = self.create_sequential_tree(7)  #      4
+                                               #   2     6
+                                               # 1  3   5  7
+        self.tree_height = None
+
+        tree.breadth_first_search(lambda node: self.assert_two_three_node(tree, node))
+
+        def print_node(node):
+            logging.debug('%s', node)
+
+        tree.breadth_first_search(print_node)
+
+    def test_random_data(self):
+        # random.seed()
+        # random_list = [random.randint(0, 2**30) for _ in xrange(len(1000))]
+        # sorted_list = [x for x in xrange(10000)]
+        # shuffled_list = sorted_list
+        # random.shuffle(shuffled_list)
+
+        tree = TwoThreeTree()
+        reference_list = []
+
+        for i in xrange(10000):
+            if (len(reference_list) == 0) or (random.random() >= 0.25):
+                new_value = random.randint(0, 2**30)
+                logging.debug("inserting value: %d", new_value)
+
+                tree.insert(new_value)
+                reference_list.append(new_value)
+            else:
+                value_index_to_delete = random.randint(0, len(reference_list) - 1)
+                value_to_delete = reference_list[value_index_to_delete]
+                logging.debug("deleting value: %d", value_to_delete)
+
+                tree.remove(value_to_delete)
+                reference_list.pop(value_index_to_delete)
+
+        self.tree_height = None
+        tree.breadth_first_search(lambda node: self.assert_two_three_node(tree, node))
+
+        tree_list = []
+
+        def make_list(node):
+            tree_list.extend(node.keys)
+
+        tree.breadth_first_search(make_list)
+
+        self.assertEquals(sorted(reference_list), sorted(tree_list))
+
+
+# logging.basicConfig(format='%(levelname)-7s %(message)s', level=logging.DEBUG)
+# logging.basicConfig(format='%(levelname)-7s %(message)s', level=logging.INFO)

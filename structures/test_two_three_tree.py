@@ -40,6 +40,13 @@ class TwoThreeNode():
 
         return self.children[-1]
 
+    def get_child_index_for_node(self, node):
+        for i in xrange(len(self.children)):
+            if self.children[i] == node:
+                return i
+
+        return None
+
     def insert_key_to_correct_pos(self, key):
         assert len(self.children) == 0
 
@@ -176,70 +183,70 @@ class TwoThreeNode():
         child.parent = self
 
     def get_left_parent_key(self):
-        for i in xrange(len(self.parent.children)):
-            if self.parent.children[i] == self:
-                return self.parent.keys[i - 1]
+        child_index = self.parent.get_child_index_for_node(self)
+        if child_index is None:
+            return None
 
-        return None
+        return self.parent.keys[child_index - 1]
 
     def get_right_parent_key(self):
-        for i in xrange(len(self.parent.children)):
-            if self.parent.children[i] == self:
-                return self.parent.keys[i]
+        child_index = self.parent.get_child_index_for_node(self)
+        if child_index is None:
+            return None
 
-        return None
+        return self.parent.keys[child_index]
 
     def set_left_parent_key(self, key):
-        for i in xrange(len(self.parent.children)):
-            if self.parent.children[i] == self:
-                if key is None:
-                    self.parent.keys.pop(i - 1)
-                    self.parent.children.pop(i - 1)
-                else:
-                    self.parent.keys[i - 1] = key
+        child_index = self.parent.get_child_index_for_node(self)
+        if child_index is None:
+            return
 
-                break;
+        if key is None:
+            self.parent.keys.pop(child_index - 1)
+            self.parent.children.pop(child_index - 1)
+        else:
+            self.parent.keys[child_index - 1] = key
 
     def set_right_parent_key(self, key):
-        for i in xrange(len(self.parent.children)):
-            if self.parent.children[i] == self:
-                if key is None:
-                    self.parent.keys.pop(i)
-                    self.parent.children.pop(i + 1)
-                else:
-                    self.parent.keys[i] = key
+        child_index = self.parent.get_child_index_for_node(self)
+        if child_index is None:
+            return
 
-                break;
+        if key is None:
+            self.parent.keys.pop(child_index)
+            self.parent.children.pop(child_index + 1)
+        else:
+            self.parent.keys[child_index] = key
 
     def remove_leaf_3_node_key(self, key):
         assert self.is_leaf()
-        assert self.is_three_node()
+        assert len(self.keys) >= 2
         assert key in self.keys
 
-        if key == self.keys[0]:
-            self.keys[0] = self.keys[1]
-            del self.keys[1]
-
-        elif key == self.keys[1]:
-            del self.keys[1]
+        for i in xrange(len(self.keys)):
+            if self.keys[i] == key:
+                self.keys.pop(i)
+                break
 
     def _is_there_3_nodes_to_the_right(self):
-        for i in xrange(len(self.parent.children)):
-            if self.parent.children[i] == self:
-                for j in xrange(i + 1, len(self.parent.children)):
-                    if self.parent.children[j].is_three_node():
-                        return True
-                break
+        child_index = self.parent.get_child_index_for_node(self)
+        if child_index is None:
+            return False
+
+        for i in xrange(child_index + 1, len(self.parent.children)):
+            if self.parent.children[i].is_three_node():
+                return True
 
         return False
 
     def _is_there_3_nodes_to_the_left(self):
-        for i in xrange(len(self.parent.children)):
-            if self.parent.children[i] == self:
-                for j in xrange(i - 1, -1, -1):
-                    if self.parent.children[j].is_three_node():
-                        return True
-                break
+        child_index = self.parent.get_child_index_for_node(self)
+        if child_index is None:
+            return False
+
+        for i in xrange(child_index - 1, -1, -1):
+            if self.parent.children[i].is_three_node():
+                return True
 
         return False
 
@@ -334,20 +341,6 @@ class TwoThreeTree:
             node, node.parent, sibling)
         # logging.debug('node.children: (%s)', '; '.join(map(str, node.children)))
         # logging.debug('parent.children: (%s)', '; '.join(map(str, node.parent.children)))
-
-    def _double_rotate_left(self, node):
-        sibling = node.get_right_sibling()
-        logging.debug('_double_rotate_left, node: (%s), parent: (%s), sibling: (%s)', node, node.parent, sibling)
-
-        self._rotate_left(node)
-        self._rotate_left(sibling)
-
-    def _double_rotate_right(self, node):
-        sibling = node.get_left_sibling()
-        logging.debug('_double_rotate_right, node: (%s), parent: (%s), sibling: (%s)', node, node.parent, sibling)
-
-        self._rotate_right(node)
-        self._rotate_right(sibling)
 
     def _find_predessor(self, node, key):
         assert not node.is_leaf()

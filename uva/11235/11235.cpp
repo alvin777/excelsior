@@ -93,6 +93,11 @@ int main(int argc, char const *argv[]) {
         }
     }
 
+    // print_array(data, count, "data");
+    // print_array(b - MIN_VALUE,    10, "b");
+    // print_array(freq - MIN_VALUE, 10, "freq");
+
+
     for (int i = 0; i < queries_count; ++i)
     {
         cin >> queries[i][0] >> queries[i][1];
@@ -109,8 +114,15 @@ int main(int argc, char const *argv[]) {
     {
         int from = queries[i][0] - 1;
         int to   = queries[i][1] - 1;
-        int partial_begin = freq[data[from] - MIN_VALUE] - (from - b[data[from] - MIN_VALUE]);
-        int partial_end   = to - b[data[to] - MIN_VALUE] + 1;
+
+        if (data[from] == data[to]) {
+            cout << to - from + 1 << endl;
+            continue;
+        }
+
+        int partial_begin = min(b[data[from] - MIN_VALUE] + freq[data[from] - MIN_VALUE], to) - from;
+        int partial_end   = to - max(b[data[to] - MIN_VALUE], from) + 1;
+        // da("freq[data[from] - MIN_VALUE]: %d, from: %d, b[data[from] - MIN_VALUE]: %d\n", freq[data[from] - MIN_VALUE], from, b[data[from] - MIN_VALUE]);
 
         int n = query(tree, 1, 0, count - 1, from + partial_begin + 1, to - partial_end - 1);
         // da("from %d to %d, partial_begin: %d, partial_end: %d, res: %d\n", from, to, partial_begin, partial_end, n);

@@ -4,6 +4,8 @@
 #include <set>
 #include <algorithm>
 #include <iomanip>
+#include <fstream>
+#include <list>
 
 using namespace std;
 typedef long long ll;
@@ -56,9 +58,12 @@ ostream& operator<< (ostream& o, const Indent& indent) {
 
 class BigUInt {
 public:
-    typedef unsigned char word_t;
-    // typedef unsigned long long word_t;
-    // typedef unsigned int word_t;
+    // typedef unsigned char size_type;
+    typedef unsigned int size_type;
+    // typedef unsigned long long size_type;
+
+    // typedef vector<size_type> container_type;
+    typedef list<size_type> container_type;
 
     BigUInt() : data(1) {
     }
@@ -66,27 +71,26 @@ public:
     BigUInt(const BigUInt& other) : data(other.data) {
     }
 
-    explicit BigUInt(uint number) {
+    BigUInt(const BigUInt&& other) : data(std::move(other.data)) {
+    }
+
+    template<typename T>
+    explicit BigUInt(T number) {
         initFromNumber(number);
     }
 
-    // BigUInt(ll number) {
-    //     initFromNumber(number);
-    // }
-
     BigUInt(const string& str, uint base = 10) {
         for (auto c : str) {
-
-            DE(c);
-            word_t digit = c - '0';
+            size_type digit = c - '0';
 
             *this *= BigUInt(base);
             *this += BigUInt(static_cast<uint>(digit));
         }
     }
 
-    BigUInt(const vector<word_t>& array) {
-        data = array;
+    BigUInt(const container_type& array) : 
+        data(array.begin(), array.end()) 
+    {
     }
 
     string toString(int base = 10) {
@@ -106,19 +110,25 @@ public:
     T toNumber() {
         T number = 0;
 
-        for (int i = 0; i < min(data.size(), sizeof(number)/sizeof(word_t)); ++i) {
-            number |= (data[i] << (8*i*sizeof(word_t)));
+        auto it = data.begin();
+        for (int i = 0; i < min(data.size(), sizeof(number)/sizeof(size_type)); ++i, ++it) {
+            number |= (static_cast<T>(*it) << (8*i*sizeof(size_type)));
             // D(data[i]); DE(number);
         }
         return number;
     }
 
-    word_t getLastWord() {
+    size_type getLastWord() {
         return data.size() > 0 ? data.front() : 0;
     }
 
     BigUInt& operator= (const BigUInt& other) {
         data = other.data;
+        return *this;
+    }
+
+    BigUInt& operator= (const BigUInt&& other) {
+        data = std::move(other.data);
         return *this;
     }
 
@@ -162,30 +172,7 @@ public:
     }
 
     BigUInt& operator<<= (uint count) {
-        uint wordsShift = count / (sizeof(word_t)*8);
-        uint bitsShift  = count % (sizeof(word_t)*8);
-
-        while (wordsShift--) {
-            data.insert(data.begin(), 0);
-        }
-
-        if (bitsShift != 0) {
-            word_t mask = word_t(-1) >> (sizeof(word_t)*8 - bitsShift);
-
-            word_t overflowWord = (data.back() >> (sizeof(word_t)*8 - bitsShift)) & mask;
-
-            for (auto it = data.rbegin(); it != data.rend() - 1; ++it) {
-                *it = (*it << bitsShift) | ((*(it+1) >> (sizeof(word_t)*8 - bitsShift)) & mask);
-            }
-
-            data.front() <<= bitsShift;
-
-            if (overflowWord) {
-                data.insert(data.end(), overflowWord);
-            }
-        }
-
-        return *this;
+        return left_shift(count);
     }
 
     BigUInt operator/ (uint divisor) {
@@ -217,11 +204,14 @@ public:
         if (totalSize < data.size()) throw exception();
 
         if (totalSize == data.size()) {
-            auto middle = data.begin() + (data.end() - data.begin())/2;
-            return BigUInt(vector<word_t>(data.begin(), middle));
+            auto middle = data.begin();
+            advance(middle, data.size()/2);
+            return BigUInt(container_type(data.begin(), middle));
         }
 
-        vector<word_t> newData(data.begin(), min(data.begin() + totalSize/2, data.end()));
+        auto last = data.begin();
+        advance(last, min<uint>(totalSize/2, data.size()));
+        container_type newData(data.begin(), last);
         // print_array(newData.rbegin(), newData.rend(), "newData");
         newData.resize(totalSize/2);
         // print_array(newData.rbegin(), newData.rend(), "newData");
@@ -232,15 +222,18 @@ public:
         if (totalSize < data.size()) throw exception();
 
         if (totalSize == data.size()) {
-            auto middle = data.begin() + (data.end() - data.begin())/2;
-            return BigUInt(vector<word_t>(middle, data.end()));
+            auto middle = data.begin();
+            advance(middle, data.size()/2);
+            return BigUInt(container_type(middle, data.end()));
         } 
 
         if (totalSize >= 2*data.size()) {
-            return BigUInt(vector<word_t>((totalSize + 1)/2));
+            return BigUInt(container_type((totalSize + 1)/2));
         }
 
-        vector<word_t> newData(data.begin() + totalSize/2, data.end());
+        auto last = data.begin();
+        advance(last, totalSize/2);
+        container_type newData(last, data.end());
         newData.resize((totalSize + 1)/2);
         return BigUInt(newData);
     }
@@ -258,10 +251,15 @@ private:
             return;
         }
 
+        if (sizeof(T) <= sizeof(size_type))  {
+            data.push_back(number);
+            return;
+        }
+
         while (number) {
-            word_t chunk = number;
-            data.push_back(chunk);
-            number >>= sizeof(word_t)*8;
+            size_type word = number;
+            data.push_back(word);
+            number >>= sizeof(size_type)*8;
         }
     }
 
@@ -272,6 +270,8 @@ private:
 
         char carry = 0;
         int i = 0;
+        auto it = data.begin();
+        auto otherIt = other.data.begin();
 
         while (carry || i < other.size()) { // while carry flag is on or other has any data
             if (i == data.size()) {
@@ -279,28 +279,28 @@ private:
             }
 
             if (carry) {
-                data[i] += carry;
-                carry = data[i] < carry ? 1 : 0;
+                *it += carry;
+                carry = *it < carry ? 1 : 0;
             }
 
             if (i < other.size()) {
-                data[i] += other.data[i];
-                carry = data[i] < other.data[i] ? 1 : carry;
+                *it += *otherIt;
+                carry = *it < *otherIt ? 1 : carry;
             }
-            i++;            
+            ++i;
+            ++it;
+            ++otherIt;
         }
 
         return *this;
     }
 
     BigUInt& multiply(const BigUInt& other) {
+        // Indent ind;
 
-        Indent ind;
-
-        cout << ind << "multiply" << endl;
-        cout << ind; print_array(data.begin(), data.end(), "data");
-        cout << ind; print_array(other.data.begin(), other.data.end(), "other.data");
-
+        // cout << ind << "multiply" << endl;
+        // cout << ind; print_array(data.rbegin(), data.rend(), "data");
+        // cout << ind; print_array(other.data.rbegin(), other.data.rend(), "other.data");
 
         if (isZero() || other.isZero()) {
             data.clear();
@@ -311,9 +311,11 @@ private:
         size_t maxSize = max(size(), other.size());
         uint halfMaxSize = maxSize >> 1;
 
+        // cout << ind; DE(maxSize); 
+
         if (maxSize == 1) {
             multiplyWord(other);
-            cout << ind; print_array(ALL(data), "result");
+            // cout << ind; print_array(ALL(data), "result");
             return *this;
         }
 
@@ -323,29 +325,28 @@ private:
         BigUInt otherRightHalf = other.rightHalf(maxSize);
 
 
-        BigUInt xl_yl = thisLeftHalf  * otherLeftHalf;
-        BigUInt xl_yr = thisLeftHalf  * otherRightHalf;
-        BigUInt xr_yl = thisRightHalf * otherLeftHalf;
-        BigUInt xr_yr = thisRightHalf * otherRightHalf;
+        BigUInt xl_yl = thisLeftHalf;  xl_yl.multiply(otherLeftHalf);
+        BigUInt xl_yr = thisLeftHalf;  xl_yr.multiply(otherRightHalf);
+        BigUInt xr_yl = thisRightHalf; xr_yl.multiply(otherLeftHalf);
+        BigUInt xr_yr = thisRightHalf; xr_yr.multiply(otherRightHalf);
 
-        // DE(maxSize); 
-        // print_array(data.rbegin(), data.rend(), "data");
-        // print_array(thisLeftHalf.data.rbegin(),   thisLeftHalf.data.rend(),  "leftHalf");
-        // print_array(thisRightHalf.data.rbegin(),  thisRightHalf.data.rend(), "rightHalf");
+        // cout << ind; DE(maxSize); 
+        // cout << ind; print_array(data.rbegin(), data.rend(), "data");
+        // cout << ind; print_array(thisLeftHalf.data.rbegin(),   thisLeftHalf.data.rend(),  "leftHalf");
+        // cout << ind; print_array(thisRightHalf.data.rbegin(),  thisRightHalf.data.rend(), "rightHalf");
 
-        // print_array(other.data.rbegin(), other.data.rend(), "other.data");
-        // print_array(otherLeftHalf.data.rbegin(),  otherLeftHalf.data.rend(),  "other.leftHalf");
-        // print_array(otherRightHalf.data.rbegin(), otherRightHalf.data.rend(), "other.rightHalf");
+        // cout << ind; print_array(other.data.rbegin(), other.data.rend(), "other.data");
+        // cout << ind; print_array(otherLeftHalf.data.rbegin(),  otherLeftHalf.data.rend(),  "other.leftHalf");
+        // cout << ind; print_array(otherRightHalf.data.rbegin(), otherRightHalf.data.rend(), "other.rightHalf");
 
-        // print_array(xl_yl.data.rbegin(),  xl_yl.data.rend(),  "xl_yl");
-        // print_array(xl_yr.data.rbegin(),  xl_yr.data.rend(),  "xl_yr");
-        // print_array(xr_yl.data.rbegin(),  xr_yl.data.rend(),  "xr_yl");
-        // print_array(xr_yr.data.rbegin(),  xr_yr.data.rend(),  "xr_yr");
+        // cout << ind; print_array(xl_yl.data.rbegin(),  xl_yl.data.rend(),  "xl_yl");
+        // cout << ind; print_array(xl_yr.data.rbegin(),  xl_yr.data.rend(),  "xl_yr");
+        // cout << ind; print_array(xr_yl.data.rbegin(),  xr_yl.data.rend(),  "xr_yl");
+        // cout << ind; print_array(xr_yr.data.rbegin(),  xr_yr.data.rend(),  "xr_yr");
 
-        *this = (xl_yl << halfMaxSize*2*8) + ((xl_yr + xr_yl) << (halfMaxSize*8)) + xr_yr;
-        // print_array(data.rbegin(), data.rend(), "res data");
+        *this = (xl_yl << 2*halfMaxSize*sizeof(size_type)*8) + ((xl_yr + xr_yl) << (halfMaxSize*sizeof(size_type)*8)) + xr_yr;
 
-        cout << ind; print_array(ALL(data), "result");
+        // cout << ind; print_array(ALL(data), "result");
 
         return *this;
     }
@@ -355,11 +356,11 @@ private:
         uint rem = 0;
         for (auto it = data.rbegin(); it != data.rend(); ++it)
         {
-            ll cur = (rem << (sizeof(word_t) * 8)) + *it;
-            word_t num = cur / divisor;
+            ll cur = ((ll)rem << (sizeof(size_type) * 8)) + *it;
+            size_type num = cur / divisor;
             rem = cur % divisor;
 
-            quotent <<= sizeof(word_t) * 8;
+            quotent <<= sizeof(size_type) * 8;
             quotent += BigUInt(num);
         }
 
@@ -410,8 +411,8 @@ private:
         return (number >> shiftHalf) & mask;
     }
 
-    word_t addWithCarry(word_t a, word_t b, word_t& carry) {
-        word_t temp = a + b;
+    size_type addWithCarry(size_type a, size_type b, size_type& carry) {
+        size_type temp = a + b;
         if (temp < a) {
             carry++;
         }
@@ -424,29 +425,29 @@ private:
             return *this;
         }
 
-        word_t thisLh = hi_half(data.front());
-        word_t thisRh = lo_half(data.front());
+        size_type thisLh = hi_half(data.front());
+        size_type thisRh = lo_half(data.front());
 
-        word_t otherLh = hi_half(other.data.front());
-        word_t otherRh = lo_half(other.data.front());
+        size_type otherLh = hi_half(other.data.front());
+        size_type otherRh = lo_half(other.data.front());
 
         // D(thisLh); D(thisRh); D(otherLh); DE(otherRh);
 
 
-        word_t xl_yl = thisLh * otherLh;
-        word_t xl_yr = thisLh * otherRh;
-        word_t xr_yl = thisRh * otherLh;
-        word_t xr_yr = thisRh * otherRh;
+        size_type xl_yl = thisLh * otherLh;
+        size_type xl_yr = thisLh * otherRh;
+        size_type xr_yl = thisRh * otherLh;
+        size_type xr_yr = thisRh * otherRh;
 
         // D(xl_yl); D(xl_yr); D(xr_yl); DE(xr_yr);
 
 
-        word_t carry = 0;
-        word_t lo = xr_yr;
-        lo = addWithCarry(lo, lo_half(xl_yr) << (sizeof(word_t)*8/2), carry);
-        lo = addWithCarry(lo, lo_half(xr_yl) << (sizeof(word_t)*8/2), carry);
+        size_type carry = 0;
+        size_type lo = xr_yr;
+        lo = addWithCarry(lo, lo_half(xl_yr) << (sizeof(size_type)*8/2), carry);
+        lo = addWithCarry(lo, lo_half(xr_yl) << (sizeof(size_type)*8/2), carry);
 
-        word_t hi = carry;
+        size_type hi = carry;
         carry = 0;
         hi = addWithCarry(hi, hi_half(xl_yr), carry);
         hi = addWithCarry(hi, hi_half(xr_yl), carry);
@@ -454,13 +455,41 @@ private:
 
         // D(lo); D(hi); DE(carry);
 
-        data[0] = lo;
+        data.front() = lo;
 
         if (hi || carry) {
             data.push_back(hi);
 
             if (carry) {
                 data.push_back(carry);
+            }
+        }
+
+        return *this;
+    }
+
+    BigUInt& left_shift(uint count) {
+        uint wordsShift = count / (sizeof(size_type)*8);
+        uint bitsShift  = count % (sizeof(size_type)*8);
+        uint compliment_bits_shift = sizeof(size_type)*8 - bitsShift;
+
+        while (wordsShift--) {
+            data.insert(data.begin(), 0);
+        }
+
+        if (bitsShift != 0) {
+            size_type mask = size_type(-1) >> compliment_bits_shift;
+
+            size_type overflowWord = (data.back() >> compliment_bits_shift) & mask;
+
+            for (auto it = data.rbegin(); it != --data.rend(); ++it) {
+                *it = (*it << bitsShift) | ((*next(it) >> compliment_bits_shift) & mask);
+            }
+
+            data.front() <<= bitsShift;
+
+            if (overflowWord) {
+                data.insert(data.end(), overflowWord);
             }
         }
 
@@ -475,9 +504,7 @@ private:
         return true;
     }
 
-    vector<word_t> data;
-
-    // friend int main();
+    container_type data;
 };
 
 template<typename T>
@@ -487,36 +514,49 @@ void checkEquals(const T& expected, const T& actual, const std::string& message 
     }
 }
 
+void test() {
+    // DE((BigUInt(0) * BigUInt(5000000000)).toNumber<ull>());
+    // D(BigUInt(5000000000).size());
+    // return;
+
+    const unsigned long long numbersList[] = {0, 1, 2, 5, 10, 50, 100, 255, 256, 500, 511, 512, 64000, 65535, 65536, 5000000000};
+
+    for(auto n : numbersList) {
+        DE(n);
+        checkEquals(n, BigUInt(n).toNumber<ull>(), "BigUInt(n).toNumber<ull>()");
+        checkEquals(to_string(n), BigUInt(n).toString(), "BigUInt(n).toString()");
+        checkEquals(n, BigUInt(to_string(n)).toNumber<ull>(), "BigUInt(to_string(n)).toNumber<ull>()");
+    }
+
+    for(auto n : numbersList) {
+        for (auto m : numbersList) {
+            D(n); DE(m);
+            checkEquals(n + m, (BigUInt(n) + BigUInt(m)).toNumber<ull>(), "BigUInt(n) + BigUInt(m)");
+            checkEquals(n * m, (BigUInt(n) * BigUInt(m)).toNumber<ull>(), "BigUInt(n) * BigUInt(m)");
+            if ((m != 0) && (m < (1LL << 32))) {
+                checkEquals(n / m, (BigUInt(n) / m).toNumber<ull>(), "BigUInt(n) / m");
+                checkEquals(n % m, (BigUInt(n) % m).toNumber<ull>(), "BigUInt(n) % m");
+            }
+
+            if (m < 64) {
+                checkEquals((ull)(n << m), (BigUInt(n) << m).toNumber<ull>(), "BigUInt(n) << m");
+            }
+            checkEquals(n + m, (BigUInt(to_string(n)) + BigUInt(to_string(m))).toNumber<ull>(), "BigUInt(to_string(n)) + BigUInt(to_string(m))");
+            checkEquals(n * m, (BigUInt(to_string(n)) * BigUInt(to_string(m))).toNumber<ull>(), "BigUInt(to_string(n)) * BigUInt(to_string(m))");
+        }
+    }
+}
+ 
 int main()
 {
     ios::sync_with_stdio(false);
 
-    // (BigUInt(1U) + BigUInt(255U)).toNumber<uint>();
-    // DE((BigUInt(1U) * BigUInt(65536U)).toString());
+    // test();
     // return 0;
 
-    // const auto numbersList = {0, 1, 2, 5, 10, 50, 100, 255, 256, 500, 511, 512, 64000, 65535, 65536};
-
-    // for(unsigned int i : numbersList) {
-    //     checkEquals(i, BigUInt(i).toNumber<uint>(), "BigUInt(i).toNumber<uint>()");
-    //     checkEquals(to_string(i), BigUInt(i).toString(), "BigUInt(i).toString()");
-    //     checkEquals(i, BigUInt(to_string(i)).toNumber<uint>(), "BigUInt(to_string(i)).toNumber<uint>()");
-    // }
-
-    // for(unsigned int i : numbersList) {
-    //     for (unsigned int j : numbersList) {
-    //         cout << "i: " << i << ", j: " << j << endl;
-    //         checkEquals(i + j, (BigUInt(i) + BigUInt(j)).toNumber<uint>(), "BigUInt(i) + BigUInt(j)");
-    //         checkEquals(i * j, (BigUInt(i) * BigUInt(j)).toNumber<uint>(), "BigUInt(i) * BigUInt(j)");
-    //         if (j != 0) {
-    //             checkEquals(i / j, (BigUInt(i) / j).toNumber<uint>(), "BigUInt(i) / j");
-    //             checkEquals(i % j, (BigUInt(i) % j).toNumber<uint>(), "BigUInt(i) % j");
-    //         }
-    //         // checkEquals((ull)(i << j), (BigUInt(i) << j).toNumber<ull>(), "BigUInt(i) << j");
-    //         checkEquals(i + j, (BigUInt(to_string(i)) + BigUInt(to_string(j))).toNumber<uint>(), "BigUInt(to_string(i)) + BigUInt(to_string(j))");
-    //         checkEquals(i * j, (BigUInt(to_string(i)) * BigUInt(to_string(j))).toNumber<uint>(), "BigUInt(to_string(i)) * BigUInt(to_string(j))");
-    //     }
-    // }
+    std::ifstream in("test10000.in");
+    std::streambuf *cinbuf = std::cin.rdbuf(); //save old buf
+    std::cin.rdbuf(in.rdbuf()); //redirect std::cin to in.txt!
 
     string x_str, y_str;
     cin >> x_str >> y_str;
@@ -524,7 +564,10 @@ int main()
     BigUInt x(x_str);
     BigUInt y(y_str);
 
-    cout << (x * y).toString() << endl;
+    D(x.size());
+    return 0;
+
+    // cout << (x * y).toString() << endl;
 
     return 0;
 }

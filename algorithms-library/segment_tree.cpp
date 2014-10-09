@@ -4,6 +4,7 @@
 #include <set>
 #include <algorithm>
 #include <iomanip>
+#include <array>
 
 using namespace std;
 typedef long long ll;
@@ -62,78 +63,88 @@ void check_equals(const T& actual, const T& expected, const string& message = "C
     }
 }
 
+template<typename T, int ElementsCount, T defaultValue = T()>
+class SegmentTree {
+public:
+    typedef function<const T& (const T&, const T&)> Function;
+    SegmentTree(Function func) : func(func) {};
+    void build(T data[], int tl, int tr, int i = 0) {
+
+        if (tl == tr) {
+            st[i] = data[tl];
+            return;
+        }
+
+        int tm = tl + (tr-tl)/2;   // partition original array
+        int li = 2*i + 1;          // calc heap indices for st
+        int ri = 2*i + 2;
+
+        build(data, tl, tm,   li); 
+        build(data, tm+1, tr, ri);
+        st[i] = func(st[li], st[ri]);
+    }
+
+    void update(int pos, T val, int tl, int tr, int i = 0) {
+        if (tl == tr) {
+            st[i] = val;
+            return;
+        }
+
+        int tm = tl + (tr-tl)/2;
+        int li = 2*i + 1;
+        int ri = 2*i + 2;
+
+        if (pos <= tm) {
+            update(pos, val, tl,   tm, li);
+        } else {
+            update(pos, val, tm+1, tr, ri);
+        }
+        st[i] = func(st[li], st[ri]);
+    }
+
+    T query(int ql, int qr, int tl, int tr, int i = 0) {
+        if (ql > tr || qr < tl) return defaultValue;
+
+        if (ql <= tl && qr >= tr) {
+            return st[i];
+        }
+
+        int tm = tl + (tr-tl)/2;
+        int li = 2*i + 1;
+        int ri = 2*i + 2;
+        return func(query(ql, qr, tl,   tm, li), 
+                    query(ql, qr, tm+1, tr, ri));
+    }
+private:
+    array<T, ElementsCount> st;
+    Function func;
+};
+
+
 int data[] = {1, 20, 10, 15, 4};
 // int data[] = {1,2,3,4,5};
 // int data[] = {5,4,3,2,1};
 // int data[] = {1,2,1,3,1,4};
 int n = COUNT(data);
-int st[MAX_COUNT];
 
-void st_build(int data[], int tl, int tr, int i) {
-
-    if (tl == tr) {
-        st[i] = data[tl];
-        return;
-    }
-
-    int tm = tl + (tr-tl)/2;   // partition original array
-    int li = 2*i + 1;          // calc heap indices for st
-    int ri = 2*i + 2;
-
-    st_build(data, tl, tm,   li); 
-    st_build(data, tm+1, tr, ri);
-    st[i] = max(st[li], st[ri]);
-}
-
-void st_update(int pos, int val, int tl, int tr, int i) {
-    if (tl == tr) {
-        st[i] = val;
-        return;
-    }
-
-    int tm = tl + (tr-tl)/2;
-    int li = 2*i + 1;
-    int ri = 2*i + 2;
-
-    if (pos <= tm) {
-        st_update(pos, val, tl,   tm, li);
-    } else {
-        st_update(pos, val, tm+1, tr, ri);
-    }
-    st[i] = max(st[li], st[ri]);
-}
-
-int st_query(int ql, int qr, int tl, int tr, int i) {
-    if (ql > tr || qr < tl) return -INF;
-
-    if (ql <= tl && qr >= tr) {
-        return st[i];
-    }
-
-    int tm = tl + (tr-tl)/2;
-    int li = 2*i + 1;
-    int ri = 2*i + 2;
-    return max(st_query(ql, qr, tl,   tm, li), 
-               st_query(ql, qr, tm+1, tr, ri));
-}
+SegmentTree<int, MAX_COUNT, -INF> segmentTree([](const int& a, const int& b){ return max(a, b); });
+// SegmentTree<int, MAX_COUNT, -INF> segmentTree(max);
 
 int main()
 {
     ios::sync_with_stdio(false);
 
-    // cin >> n;
-    st_build(data, 0, n-1, 0);
-    // print_array(ALL(st), "st");
+    segmentTree.build(data, 0, n-1);
 
     REP(k, 100) {    
         REP(i, n) {
             FOR(j, i, n) {
                 string message = "i: " + to_string(i) + ", j: " + to_string(j);
-                check_equals(st_query(i, j, 0, n-1, 0), *max_element(data + i, data + j + 1), message);
+                check_equals(segmentTree.query(i, j, 0, n-1), *max_element(data + i, data + j + 1), message);
             }
         }
         data[k % n] += 100;
-        st_update(k % n, data[k % n], 0, n-1, 0);
+        segmentTree.update(k % n, data[k % n], 0, n-1);
     }
 
     return 0;

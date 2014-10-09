@@ -17,7 +17,7 @@ typedef vector<int> vi;
 #define COUNT(a) (sizeof(a)/sizeof(a[0]))
 
 const int INF = 1e9;
-const int MAX_COUNT = 1e5 + 1;
+const int MAX_COUNT = 1e5;
 const int MOD = 1e9 + 7;
 
 const int LEN = 0;
@@ -98,8 +98,8 @@ int main()
 
         int len = max(get<LEN>(max_ind) + 1, 1);
 
-        int ii = distance(c, lower_bound(c, c + c_size, data[i]));
-        st_update(ii, make_tuple(len, i), 0, max_value, 0);
+        int ci = distance(c, lower_bound(c, c + c_size, data[i]));
+        st_update(ci, make_tuple(len, i), 0, max_value, 0);
 
         if (len > max_len) {
             max_len = len;

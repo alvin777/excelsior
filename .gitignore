@@ -1,6 +1,7 @@
 #exclude files without extension (executables)
 *
 !*.*
+!*/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

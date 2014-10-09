@@ -1,0 +1,33 @@
+Graph
+* Maximum Flow
+* Min-Cost Maximum Flow
+* Maximum Bipartite Matching (weighted and not)
+
+Math
+* Extended Euclid Algorithm
+* Matrix class (multiplication and exponentiation)
+* Arbitrary precision arithmetic
+* Fractions class
+
+Geometry
+* Different helper functions to work with points, lines, segments, circles, polygons. This includes finding squares, points of intersection, convex hulls, etc.
+* calculating polygon area
+* checking whether the point is inside of the polygon
+* finding convex hull
+
+Strings
+* Prefix function
+* Z-function
+* KMP
+
+Data Structures
+* tree
+* tries (prefix trees)
+* binary indexed tree
+* segment tree
+
+Other
+* parse a space-delimited string into a vector<int> or a vector<string>
+
+
+http://apps.topcoder.com/forums/?module=Thread&threadID=681710&start=0&mc=8#1329165

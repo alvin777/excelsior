@@ -20,47 +20,8 @@ const int INF = 1e9;
 const int MAX_COUNT = 1e5 + 1;
 const int MOD = 1e9 + 7;
 
-#ifndef ONLINE_JUDGE
-
-///// trace helpers /////
-
-template<typename T> 
-void print_array(T first, T last, const string& label = "") {
-    if (label.size()) {
-        cout << label << ": ";
-    }
-
-    while (first != last) {
-        cout << *first++ << " ";
-    }
-
-    cout << endl;
-}
-
-class Indent
-{
-public:
-    friend ostream& operator<< (ostream& o, const Indent& indent);
-
-    Indent()  { ++level; }
-    ~Indent() { --level; }
-
-private:
-    static int level;
-};
-
-int Indent::level = -1;
-
-ostream& operator<< (ostream& o, const Indent& indent) {
-    return o << string(indent.level*4, ' ');
-}
-
-
-ostream& operator<< (ostream& o, const tuple<int, int>& t) {
-    return o << "(" << get<0>(t) << ", " << get<1>(t) << ")";
-}
-
-#endif
+const int LEN = 0;
+const int IND = 1;
 
 
 int n;
@@ -74,12 +35,8 @@ typedef tuple<int, int> node_t;
 node_t st[4*MAX_COUNT+1];
 
 void st_update(int pos, node_t val, int tl, int tr, int i) {
-
-    // D(pos); D(val); D(tl); D(tr); DE(i);
-
     if (tr == tl) {
         st[i] = val;
-        // DE(st[i]);
         return;
     }
 
@@ -93,30 +50,20 @@ void st_update(int pos, node_t val, int tl, int tr, int i) {
     }
 
     st[i] = max(st[li], st[ri]);
-
-    // D(st[ri]); D(st[li]); DE(st[i]);
 }
 
 node_t st_query_max(int ql, int qr, int tl, int tr, int i) {
-    // Indent ind;
-    // cout << ind; D(ql); D(qr); D(tl); D(tr); DE(i);
-
     if (ql > tr || qr < tl) return make_tuple(-1, 0);
 
     if (ql <= tl && qr >= tr) {
-        // cout << ind << "<< " << st[i] << endl;
         return st[i];
     }
 
     int tm = tl + (tr - tl)/2;
     int li = 2*i + 1;
     int ri = 2*i + 2;
-    node_t res_l = st_query_max(ql, qr, tl,   tm, li);
-    node_t res_r = st_query_max(ql, qr, tm+1, tr, ri);
-
-    node_t res = max(res_l, res_r);
-
-    // cout << ind << "<< " << res << endl;
+    node_t res = max(st_query_max(ql, qr, tl,   tm, li), 
+                     st_query_max(ql, qr, tm+1, tr, ri));
 
     return res;
 }
@@ -135,49 +82,31 @@ int main()
     sort(c, c + n);
     int c_size = distance(c, unique(c, c + n));
 
-    // DE(c_size);
-    // print_array(c, c + c_size);
-
     int max_value = c_size;
 
     fill(ALL(st), node_t{0, -1});
-    // fill(ALL(bt), -1);
 
     int max_len = 0;
     int max_len_ind = -1;
 
     REP(i, n) {
-        // D(i); DE(data[i]); 
-
-        int l = distance(c, lower_bound(c, c + c_size, data[i] - d));
-        if (c[l] > data[i] - d) { --l; }
+        int l = distance(c, upper_bound(c, c + c_size, data[i] - d)) - 1;
         int r = distance(c, lower_bound(c, c + c_size, data[i] + d));
 
-        // D(l); DE(r);
+        node_t max_ind = max(st_query_max(0, l,         0, max_value, 0), 
+                             st_query_max(r, max_value, 0, max_value, 0));
 
-        node_t max_ind_l = st_query_max(0, l,         0, max_value, 0);
-        node_t max_ind_r = st_query_max(r, max_value, 0, max_value, 0);
-
-        node_t max_ind = max(max_ind_l, max_ind_r);
-
-        // D(max_ind_l); D(max_ind_r); DE(max_ind); 
-
-        // len[i] = (max_ind == -1) ? 1 : len[max_ind] + 1;
-        int len = max(get<0>(max_ind) + 1, 1);
-        // D(i); DE(len[i]);
+        int len = max(get<LEN>(max_ind) + 1, 1);
 
         int ii = distance(c, lower_bound(c, c + c_size, data[i]));
         st_update(ii, make_tuple(len, i), 0, max_value, 0);
-        // print_array(st, st+4*max_value, "st");
 
         if (len > max_len) {
             max_len = len;
             max_len_ind = i;
         }
-        bt[i] = get<1>(max_ind);
-        // DE(bt[i]);
 
-        // cout << endl;
+        bt[i] = get<IND>(max_ind);
     }
 
     vi path;

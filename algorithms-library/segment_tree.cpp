@@ -116,7 +116,7 @@ public:
                     query(ql, qr, tm+1, tr, ri));
     }
 private:
-    array<T, ElementsCount> st;
+    array<T, 4*ElementsCount> st;
     Function func;
 };
 

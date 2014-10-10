@@ -108,6 +108,10 @@ void pr(const string& names, T t, Types ... rest) {
     pr(string(names, next_name_pos), rest ...);
 }
 
+void print_tree(int a[], int n) {
+    
+}
+
 #endif
 
 

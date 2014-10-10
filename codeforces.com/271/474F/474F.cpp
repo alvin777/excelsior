@@ -18,9 +18,10 @@ const int INF = 1e9;
 const int MAX_COUNT = 1e5;
 const int MOD = 1e9 + 7;
 
-typedef tuple<int, int> node_t;
-const int MIN = 0;
-const int COUNT = 1;
+typedef tuple<int, int, int> node_t;
+const int GCD = 0;
+const int MIN = 1;
+const int COUNT = 2;
 
 ostream& operator<< (ostream& o, const node_t& node) {
     return o << "(" << get<0>(node) << ", " << get<1>(node) << ")";
@@ -114,26 +115,29 @@ void pr(const string& names, const T& t, Types ... rest) {
 
 int n;
 int data[MAX_COUNT];
-int st_gcd[4*MAX_COUNT];
-node_t st_min[4*MAX_COUNT];
+node_t st[4*MAX_COUNT];
 
 
-int gcd(int a, int b) {
-    if (a < b) {
-        swap(a, b);
+inline int gcd(int a, int b) { return b ? gcd(b, a % b) : a; }
+
+node_t combine(const node_t& a, const node_t& b) {
+    node_t res;
+    if (get<MIN>(a) == get<MIN>(b)) {
+        get<MIN>(res) = get<MIN>(a);
+        get<COUNT>(res) = get<COUNT>(a) + get<COUNT>(b);
+    } else {
+        res = get<MIN>(a) < get<MIN>(b) ? a : b;
     }
-
-    if (b == 0) return a;
-
-    return gcd(b, a % b);
+    get<GCD>(res) = gcd(get<GCD>(a), get<GCD>(b));
+    return res;
 }
 
-void st_build_gcd(int st[], int data[], int tl, int tr, int i = 0) {
+void st_build(int data[], int tl, int tr, int i = 0) {
     // Indent ind;s
     // PR(ind, tl, tr, i);
 
     if (tl == tr) {
-        st[i] = data[tl];
+        st[i] = node_t{data[tl], data[tl], 1};
         // PR(ind, st[i]);
         return;
     }
@@ -141,19 +145,19 @@ void st_build_gcd(int st[], int data[], int tl, int tr, int i = 0) {
     int tm = tl + (tr - tl)/2;
     int li = 2*i + 1;
     int ri = 2*i + 2;
-    st_build_gcd(st, data, tl,   tm, li);
-    st_build_gcd(st, data, tm+1, tr, ri);
+    st_build(data, tl,   tm, li);
+    st_build(data, tm+1, tr, ri);
 
-    st[i] = gcd(st[li], st[ri]);
+    st[i] = combine(st[li], st[ri]);
 }
 
-int st_query_gcd(int st[], int ql, int qr, int tl, int tr, int i = 0) {
+node_t st_query(int ql, int qr, int tl, int tr, int i = 0) {
     // Indent ind;
     // PR(ind, ql, qr, tl, tr, i);
 
     if (ql > tr || qr < tl) {
         // PR(ind, "<<", 0);
-        return 0;
+        return node_t{0, INF, 0};
     }
 
     if (ql <= tl && qr >= tr) {
@@ -164,64 +168,8 @@ int st_query_gcd(int st[], int ql, int qr, int tl, int tr, int i = 0) {
     int tm = tl + (tr - tl)/2;
     int li = 2*i + 1;
     int ri = 2*i + 2;
-    return gcd(st_query_gcd(st, ql, qr, tl,   tm, li), 
-               st_query_gcd(st, ql, qr, tm+1, tr, ri));
-}
-
-void st_build_min(node_t st[], int data[], int tl, int tr, int i = 0) {
-    // Indent ind;
-    // PR(ind, tl, tr, i);
-
-    if (tl == tr) {
-        st[i] = node_t{data[tl], 1};
-        // PR(ind, st[i]);
-        return;
-    }
-
-    int tm = tl + (tr - tl)/2;
-    int li = 2*i + 1;
-    int ri = 2*i + 2;
-    st_build_min(st, data, tl,   tm, li);
-    st_build_min(st, data, tm+1, tr, ri);
-
-    if (get<MIN>(st[li]) == get<MIN>(st[ri])) {
-        st[i] = node_t{get<MIN>(st[li]), get<COUNT>(st[li]) + get<COUNT>(st[ri])};
-    } else {
-        st[i] = min(st[li], st[ri]);
-    }
-    // PR(ind, st[i]);
-}
-
-node_t st_query_min(node_t st[], int ql, int qr, int tl, int tr, int i = 0) {
-    // Indent ind;
-    // PR(ind, ql, qr, tl, tr, i);
-
-    if (ql > tr || qr < tl) {
-        // PR(ind, "<<", "INF");
-        return node_t{INF, 0};
-    }
-
-    if (ql <= tl && qr >= tr) {
-        // PR(ind, "<<", st[i]);
-        return st[i];
-    }
-
-    int tm = tl + (tr - tl)/2;
-    int li = 2*i + 1;
-    int ri = 2*i + 2;
-    node_t res_l = st_query_min(st, ql, qr, tl,   tm, li);
-    node_t res_r = st_query_min(st, ql, qr, tm+1, tr, ri);
-
-    // PR(ind, res_l, res_r);
-
-    node_t res;
-    if (get<MIN>(res_l) == get<MIN>(res_r)) {
-        res = node_t{get<MIN>(res_l), get<COUNT>(res_l) + get<COUNT>(res_r)};
-    } else {
-        res = min(res_l, res_r);
-    }
-    // PR(ind, "<<", res);
-    return res;
+    return combine(st_query(ql, qr, tl,   tm, li), 
+                   st_query(ql, qr, tm+1, tr, ri));
 }
 
 int main()
@@ -235,8 +183,7 @@ int main()
 
     // PR(dump(data, data+n));
 
-    st_build_gcd(st_gcd, data, 0, n-1);
-    st_build_min(st_min, data, 0, n-1);
+    st_build(data, 0, n-1);
 
     int qn;
     cin >> qn;
@@ -244,12 +191,11 @@ int main()
         int l, r;
         cin >> l >> r;
 
-        int gcd = st_query_gcd(st_gcd, l-1, r-1, 0, n-1);
-        node_t min_node = st_query_min(st_min, l-1, r-1, 0, n-1);
+        node_t min_node = st_query(l-1, r-1, 0, n-1);
 
         // PR(l, r, gcd, min_node);
 
-        int queens = (gcd == get<MIN>(min_node)) ? get<COUNT>(min_node) : 0;
+        int queens = (get<GCD>(min_node) == get<MIN>(min_node)) ? get<COUNT>(min_node) : 0;
         cout << r - l - queens + 1 << endl;
     }
 

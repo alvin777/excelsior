@@ -86,23 +86,28 @@ ostream& operator<< (ostream& o, const vector<T>& v) {
 }
 
 template<typename T>
-void pr(const string& name, T t) {
+void print_value(const string& name, const T& value) {
+    if (name.find("\"") != string::npos) {
+        cout << value << " ";
+        return;
+    }
+    cout << name << ": " << value << ", ";
+}
+
+template<>
+void print_value<Indent>(const string& name, const Indent& value) {
+    cout << value;
+}
+
+template<typename T>
+void pr(const string& name, const T& t) {
     cout << name << ": " << t << endl;
 }
 
-template<typename ... Types>
-void pr(const string& names, const Indent& i, Types ... rest) {
-    auto comma_pos = names.find(',');
-    cout << i;
-    
-    auto next_name_pos = names.find_first_not_of(" \t\n", comma_pos + 1);
-    pr(string(names, next_name_pos), rest ...);
-}
-
 template<typename T, typename ... Types>
-void pr(const string& names, T t, Types ... rest) {
+void pr(const string& names, const T& t, Types ... rest) {
     auto comma_pos = names.find(',');
-    cout << names.substr(0, comma_pos) << ": " << t << ", ";
+    print_value(names.substr(0, comma_pos), t);
     
     auto next_name_pos = names.find_first_not_of(" \t\n", comma_pos + 1);
     pr(string(names, next_name_pos), rest ...);

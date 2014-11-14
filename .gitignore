@@ -63,3 +63,5 @@ codeforces.com/misc/dowser/.svn
 .DS_Store
 TestSortingMethods.sublime-project
 TestSortingMethods.sublime-workspace
+**/out
+**/.idea/workspace.xml
